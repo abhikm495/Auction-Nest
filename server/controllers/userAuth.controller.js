@@ -103,6 +103,12 @@ export const handleUserSignup = async (req, res) => {
         })
         await login.save();
 
+        res.clearCookie("auth_token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        });
+
         // Generating jwt token
         const token = generateToken(newUser._id);
 
