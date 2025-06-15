@@ -7,6 +7,24 @@ import { generateToken } from "../utils/jwt.js";
 import { getClientIp, getLocationFromIp } from "../utils/geoDetails.js";
 dotenv.config();
 
+
+export const setCookieOnSocket = async(token,user) =>{
+    try {
+        await fetch(`${process.env.SOCKET_SERVER_URL}/auth/set-cookie`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                token,
+                userId: user._id.toString()
+            })
+        });
+    } catch (socketError) {
+        console.error('Failed to set socket cookie:', socketError);
+        // Don't fail the login if socket cookie fails
+    }
+}
 export const handleUserLogin = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: "All Fields are required" });
@@ -34,6 +52,8 @@ export const handleUserLogin = async (req, res) => {
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
+
+        await setCookieOnSocket(token,user)
 
         // Getting user gro location
         const ip = getClientIp(req);
@@ -119,6 +139,8 @@ export const handleUserSignup = async (req, res) => {
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         })
+
+        await setCookieOnSocket(token,newUser)
 
         return res.status(201).json({ message: "User registered successfully" });
     } catch (err) {

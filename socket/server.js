@@ -107,6 +107,46 @@ app.post('/notify', (req, res) => {
     }
 });
 
+app.post('/auth/set-cookie', (req, res) => {
+    try {
+        const { token, userId } = req.body;
+        
+        if (!token || !userId) {
+            return res.status(400).json({ error: 'Missing token or userId' });
+        }
+
+        // Set cookie on socket domain
+
+        res.cookie("auth_token", token, {
+            domain:process.env.SOCKET_DOMAIN,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        })
+
+        res.json({ message: 'Cookie set successfully' });
+    } catch (error) {
+        console.error('Error setting cookie:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/auth/clear-cookie', (req, res) => {
+    try {
+        res.clearCookie("auth_token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        });
+
+        res.json({ message: 'Cookie cleared successfully' });
+    } catch (error) {
+        console.error('Error clearing cookie:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 const server = createServer(app);
 
