@@ -1,4 +1,4 @@
-# 🛒 Online Auction System - MERN Stack Web App
+# 🛒 Online Auction System - MERN Stack Web App - Auction Nest
 
 An online auction platform built using the **MERN stack**, with secure login, cookie-based auth, real-time bidding support (upcoming), and user login tracking for security. Designed for full-stack learners and developers with clean architecture.
 
