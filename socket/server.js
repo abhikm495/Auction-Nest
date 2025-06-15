@@ -142,6 +142,8 @@ const parseCookies = (cookieString) => {
 io.use(async (socket, next) => {
     try {
         // Parse cookies and extract auth_token
+        console.log("socket headers",socket.handshake.headers);
+        
         const cookies = parseCookies(socket.handshake.headers.cookie);
         const token = cookies.auth_token;
 
