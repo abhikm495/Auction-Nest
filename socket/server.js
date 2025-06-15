@@ -110,6 +110,7 @@ app.post('/notify', (req, res) => {
 app.post('/auth/set-cookie', (req, res) => {
     try {
         const { token, userId } = req.body;
+        console.log("this is the token",token);
         
         if (!token || !userId) {
             return res.status(400).json({ error: 'Missing token or userId' });
