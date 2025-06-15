@@ -1,7 +1,7 @@
 # Contributing Guidelines
 
 Hi there!
-Thanks for showing interest in contributing to the **Online Auction System**. We welcome all kinds of contributions — code, design, documentation, or suggestions.
+Thanks for showing interest in contributing to the **Auction Nest**. We welcome all kinds of contributions — code, design, documentation, or suggestions.
 
 ## Project Tech Stack
 

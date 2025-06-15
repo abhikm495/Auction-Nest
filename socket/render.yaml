@@ -1,0 +1,34 @@
+# render.yaml - Render deployment configuration
+services:
+  - type: web
+    name: auction-socket-server
+    env: node
+    buildCommand: npm install
+    startCommand: node socket-server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SOCKET_PORT
+        value: 10000
+      - key: JWT_SECRET
+        sync: false # Set this in Render dashboard
+      - key: MONGODB_URI
+        sync: false # Set this in Render dashboard
+      - key: CLIENT_ORIGIN
+        value: https://yourapp.vercel.app
+      - key: API_ORIGIN
+        value: https://yourapi.vercel.app
+    # Auto-deploy when main branch is updated
+    autoDeploy: true
+    branch: main
+    # Health check configuration
+    healthCheckPath: /health
+    # Scale configuration
+    numInstances: 1
+    plan: starter # or standard/pro based on your needs
+    # Persistent disk (if needed for logs)
+    disk:
+      name: auction-logs
+      mountPath: /app/logs
+      sizeGB: 1

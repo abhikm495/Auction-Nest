@@ -1,16 +1,17 @@
 import { useRef, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { placeBid, viewAuction } from "../api/auction.js";
 import { useSelector } from "react-redux";
 import LoadingScreen from "../components/LoadingScreen.jsx";
-import { useSocket } from "../hooks/useSocket.js";
+import { useAuctionSocket } from "../hooks/useAuctionData.js";
+
 export const ViewAuction = () => {
   const { id } = useParams();
   const { user } = useSelector((state) => state.auth);
   const queryClient = useQueryClient();
   const inputRef = useRef();
-  const socket = useSocket();
+  const { socket, isConnected } = useAuctionSocket(id);
 
   const { data, isLoading } = useQuery({
     queryKey: ["viewAuctions", id],
@@ -20,22 +21,39 @@ export const ViewAuction = () => {
   });
 
   useEffect(() => {
-    if (!socket || !id) return;
-
-    // Join the auction room
-    socket.emit('joinAuction', id);
-
+    if (!socket || !id || !isConnected) {
+      console.log('Skipping socket listeners setup - missing requirements');
+      return;
+    }
+    
+    console.log('Setting up socket listeners for auction:', id);
+    
     // Listen for new bids
     const handleNewBid = (bidData) => {
-      // Update the cache with new bid data
+      console.log("handleNewBid executed with data:", bidData);
+      
       queryClient.setQueryData(["viewAuctions", id], (oldData) => {
-        if (!oldData) return oldData;
-        
-        return {
+        if (!oldData) {
+          console.log("No old data found, skipping update");
+          return oldData;
+        }
+
+        console.log("Updating auction data with new bid");
+        const newData = {
           ...oldData,
           currentPrice: bidData.bidAmount,
-          bids: [bidData, ...oldData.bids] // Add new bid to the beginning
+          totalBids: (oldData.totalBids || oldData.bids.length) + 1,
+          bids: [
+            {
+              ...bidData,
+              bidTime: bidData.bidTime || new Date().toISOString()
+            }, 
+            ...oldData.bids
+          ]
         };
+        
+        console.log("New data after bid update:", newData);
+        return newData;
       });
 
       // Clear input if this user placed the bid
@@ -44,11 +62,11 @@ export const ViewAuction = () => {
       }
     };
 
-    // Listen for auction updates (price, bid limits, etc.)
-    const handleAuctionUpdate = (updateData) => {
+    // Listen for auction updates
+    const handleAuctionUpdate = (updateData) => {      
       queryClient.setQueryData(["viewAuctions", id], (oldData) => {
         if (!oldData) return oldData;
-        
+
         return {
           ...oldData,
           currentPrice: updateData.currentPrice,
@@ -58,10 +76,10 @@ export const ViewAuction = () => {
     };
 
     // Listen for auction end
-    const handleAuctionEnd = (auctionData) => {
+    const handleAuctionEnd = (auctionData) => {      
       queryClient.setQueryData(["viewAuctions", id], (oldData) => {
         if (!oldData) return oldData;
-        
+
         return {
           ...oldData,
           itemEndDate: auctionData.endDate,
@@ -70,39 +88,44 @@ export const ViewAuction = () => {
       });
     };
 
+    // Add event listeners
     socket.on('newBid', handleNewBid);
     socket.on('auctionUpdate', handleAuctionUpdate);
     socket.on('auctionEnded', handleAuctionEnd);
+
+    // Test socket connection
+    socket.emit('testConnection', { auctionId: id, message: 'Testing connection' });
 
     // Cleanup
     return () => {
       socket.off('newBid', handleNewBid);
       socket.off('auctionUpdate', handleAuctionUpdate);
       socket.off('auctionEnded', handleAuctionEnd);
-      socket.emit('leaveAuction', id);
     };
-  }, [socket, id, queryClient, user.user._id]);
+  }, [socket, id, queryClient, user.user._id, isConnected]);
 
   const placeBidMutate = useMutation({
     mutationFn: ({ bidAmount, id }) => placeBid({ bidAmount, id }),
-    onSuccess: () => {      
-      if (socket) {
-        socket.emit('placeBid', {
-          auctionId: id,
-          bidAmount: response.bidAmount,
-          bidder: {
-            _id: user.user._id,
-            name: user.user.name
-          },
-          bidTime: new Date().toISOString()
+    onSuccess: (response) => {        
+        // Update local cache immediately for better UX
+        queryClient.setQueryData(["viewAuctions", id], (oldData) => {
+            if (!oldData) return oldData;
+
+            return {
+                ...oldData,
+                currentPrice: response.currentPrice,
+                totalBids: response.totalBids,
+                minNextBid: response.minNextBid
+            };
         });
-      }
-      if (inputRef.current) inputRef.current.value = "";
+
+        // Clear the input field
+        if (inputRef.current) inputRef.current.value = "";
     },
     onError: (error) => {
-      console.log("Error: ", error.message);
+        console.log("Bid mutation error:", error.message);
     },
-  });
+});
 
   if (isLoading) return <LoadingScreen />;
 
@@ -119,6 +142,13 @@ export const ViewAuction = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 mx-auto container">
+      {/* Debug info - remove in production */}
+      <div className="bg-yellow-100 p-2 text-xs">
+        Socket Connected: {isConnected ? '✅' : '❌'} | 
+        Socket ID: {socket?.id || 'None'} | 
+        Auction ID: {id} | 
+      </div>
+      
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Image Section */}
@@ -185,7 +215,7 @@ export const ViewAuction = () => {
                 <div>
                   <p className="text-sm text-gray-500">Total Bids</p>
                   <p className="text-lg font-semibold text-gray-900">
-                    {data.bids.length}
+                    {data.totalBids || data.bids.length}
                   </p>
                 </div>
                 <div>
@@ -202,7 +232,7 @@ export const ViewAuction = () => {
             </div>
 
             {/* Bid Form */}
-            {data.seller._id != user.user._id && isActive && (
+            {data.seller._id !== user.user._id && isActive && (
               <div className="bg-white p-6 rounded-md shadow-md border border-gray-200">
                 <h3 className="text-lg font-semibold mb-4">Place Your Bid</h3>
                 <form onSubmit={handleBidSubmit} className="space-y-4">
@@ -230,7 +260,7 @@ export const ViewAuction = () => {
                   <button
                     type="submit"
                     disabled={placeBidMutate.isPending}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colo$ font-medium disabled:opacity-50 disabled:cu$or-not-allowed"
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {placeBidMutate.isPending ? "Placing Bid..." : "Place Bid"}
                   </button>
@@ -257,9 +287,9 @@ export const ViewAuction = () => {
             )}
           </h2>
           <div className="bg-white rounded-md shadow-md border border-gray-200 overflow-hidden">
-            {data.bids.length === 0 ? (
+            {(!data.bids || data.bids.length === 0) ? (
               <div className="p-8 text-center text-gray-500">
-                No bids yet. Be the fi$t to bid!
+                No bids yet. Be the first to bid!
               </div>
             ) : (
               <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">

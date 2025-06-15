@@ -1,6 +1,7 @@
 import uploadImage from '../services/cloudinaryService.js';
 import Product from '../models/product.js';
 import mongoose from "mongoose"
+import axios from 'axios';
 
 
 export const createAuction = async (req, res) => {
@@ -65,6 +66,21 @@ export const showAuction = async (req, res) => {
     }
 }
 
+const notifySocketServer = async (eventType, data) => {
+    try {
+      const socketServerUrl = process.env.SOCKET_SERVER_URL;
+      await axios.post(`${socketServerUrl}/notify`, {
+        eventType,
+        data
+      }, {
+        timeout: 5000 // 5 second timeout
+      });
+    } catch (error) {
+      console.error('Failed to notify socket server:', error.message);
+      // Don't throw error - socket notification failure shouldn't break the API
+    }
+  };
+
 export const auctionById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -117,29 +133,30 @@ export const placeBid = async (req, res) => {
         // Re-populate the product to get the updated bid with bidder details
         const updatedProduct = await Product.findById(id).populate('bids.bidder', 'name');
         const populatedBid = updatedProduct.bids[0]; // Get the newly added bid
-
+        
+        notifySocketServer('newBid', {auctionId:id,bidData:populatedBid});
         // Get Socket.IO instance and emit real-time update
-        const io = req.app.get('io');
-        if (io) {
-            // Emit to all users in this auction room
-            io.to(`auction_${id}`).emit('newBid', {
-                bidAmount: populatedBid.bidAmount,
-                bidder: {
-                    _id: populatedBid.bidder._id,
-                    name: populatedBid.bidder.name
-                },
-                bidTime: populatedBid.bidTime
-            });
+        // const io = req.app.get('io');
+        // if (io) {
+        //     // Emit to all users in this auction room
+        //     io.to(`auction_${id}`).emit('newBid', {
+        //         bidAmount: populatedBid.bidAmount,
+        //         bidder: {
+        //             _id: populatedBid.bidder._id,
+        //             name: populatedBid.bidder.name
+        //         },
+        //         bidTime: populatedBid.bidTime
+        //     });
 
-            // Optional: Emit updated auction stats
-            io.to(`auction_${id}`).emit('auctionUpdate', {
-                auctionId: id,
-                currentPrice: product.currentPrice,
-                totalBids: product.bids.length,
-                minNextBid: product.currentPrice + 1,
-                maxNextBid: product.currentPrice + 10
-            });
-        }
+        //     // Optional: Emit updated auction stats
+        //     io.to(`auction_${id}`).emit('auctionUpdate', {
+        //         auctionId: id,
+        //         currentPrice: product.currentPrice,
+        //         totalBids: product.bids.length,
+        //         minNextBid: product.currentPrice + 1,
+        //         maxNextBid: product.currentPrice + 10
+        //     });
+        // }
 
         res.status(200).json({ 
             message: "Bid placed successfully",
