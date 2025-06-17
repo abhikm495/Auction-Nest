@@ -6,7 +6,7 @@
       "concurrently": "^7.6.0"
     },
     "scripts": {
-      "install:all": "npm install --prefix socket && npm install --prefix server",
+      "install:all": "npm install && npm install --prefix socket && npm install --prefix server",
       "build:all": "npm run build --prefix socket && npm run build --prefix server",
       "start:all": "concurrently \"npm start --prefix socket\" \"npm start --prefix server\""
     }
