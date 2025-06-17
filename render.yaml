@@ -1,0 +1,49 @@
+services:
+  # Server Application
+  - type: web
+    name: server
+    env: node
+    buildCommand: |
+      cd server
+      npm install
+      npm run build
+    startCommand: |
+      cd server
+      npm start
+    rootDir: server
+    plan: free
+    branch: main
+    domains:
+      - yourdomain.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_URL
+        value: https://api.yourdomain.com
+
+  # Socket API
+  - type: web
+    name: socket-api
+    env: node
+    buildCommand: |
+      cd socket
+      npm install
+      npm run build
+    startCommand: |
+      cd socket
+      npm start
+    rootDir: socket
+    plan: free
+    branch: main
+    domains:
+      - api.yourdomain.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: main-database
+          property: connectionString
+

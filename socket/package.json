@@ -2,7 +2,7 @@
     "name": "auction-socket-server",
     "version": "1.0.0",
     "description": "WebSocket server for real-time auction bidding",
-    "main": "socket-server.js",
+    "main": "server.js",
     "type": "module",
     "scripts": {
       "start": "node server.js",
