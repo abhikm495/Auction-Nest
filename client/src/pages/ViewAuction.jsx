@@ -85,7 +85,7 @@ export const ViewAuction = () => {
 
   const placeBidMutate = useMutation({
     mutationFn: ({ bidAmount, id }) => placeBid({ bidAmount, id }),
-    onSuccess: () => {      
+    onSuccess: (response) => {      
       if (socket) {
         socket.emit('placeBid', {
           auctionId: id,
