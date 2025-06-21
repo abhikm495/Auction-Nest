@@ -81,7 +81,7 @@ export const ViewAuction = () => {
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="font-bold text-slate-800 text-base">{bidData.bidder.name} outbid you!</p>
+              <p className="font-bold text-slate-800 text-base">{bidData.bidder.name} place a bid!</p>
               <p className="text-sm text-slate-600">New highest bid: <span className="font-semibold text-orange-600">${bidData.bidAmount}</span></p>
             </div>
           </div>
@@ -505,23 +505,20 @@ export const ViewAuction = () => {
                         </span>
                       </label>
                       <div className="relative">
-                        <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-                        <input
-                          type="number"
-                          name="bidAmount"
-                          id="bidAmount"
-                          ref={inputRef}
-                          min={data.currentPrice + 1}
-                          max={data.currentPrice + 10}
-                          step="1"
-                          className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white/80 backdrop-blur-sm"
-                          placeholder="Enter bid amount"
-                          required
-                          disabled={placeBidMutate.isPending}
-                        />
-                      </div>
+          <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5 z-10 pointer-events-none" />
+          <input
+          min={data.currentPrice + 1}
+          max={data.currentPrice + 10}
+          id="bidAmount"
+            ref={inputRef}
+            type="number"
+            className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white shadow-sm"
+            placeholder="Enter bid amount"
+          />
+        </div>
                     </div>
                     <button
+                    
                       type="submit"
                       disabled={placeBidMutate.isPending}
                       className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-200 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"

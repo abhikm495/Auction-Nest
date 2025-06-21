@@ -3,7 +3,7 @@
 An online auction platform built using the **MERN stack**, with secure login, cookie-based auth, real-time bidding support (upcoming), and user login tracking for security. Designed for full-stack learners and developers with clean architecture.
 
 ## Live Preview 🌐 [Visit Website](https://bidding-platform-hs9e.vercel.app/)
-![image](https://github.com/abhikm495/Auction-Nest)
+![image](https://i.pcmag.com/imagery/reviews/074RPdZ7tLdHibj0eV38Zuj-6..v1715110493.jpg)
 
 ---
 
@@ -100,32 +100,6 @@ npm run dev
 * Auth is auto-validated on refresh via `/user` route
 * State managed via Redux Toolkit + cookies
 
-### 🔐 Auth Routes (`/auth`)
-
-| Method | Endpoint       | Description              |
-| ------ | -------------- | ------------------------ |
-| POST   | `/auth/login`  | Login user (sets cookie) |
-| POST   | `/auth/signup` | Register new user        |
-| POST   | `/auth/logout` | Logout user              |
-
-### 👤 Auto Login Route
-
-| Method | Endpoint | Description                        |
-| ------ | -------- | ---------------------------------- |
-| GET    | `/user`  | Auto-login if valid cookie present |
-
----
-
-## 🛒 Auction Routes (`/auction`)
-
-| Method | Endpoint         | Description                            |
-| ------ | ---------------- | -------------------------------------- |
-| GET    | `/auction/stats` | Dashboard stats (active, total, user)  |
-| GET    | `/auction/`      | Get all auction items                  |
-| POST   | `/auction/`      | Create new auction (with image upload) |
-| GET    | `/auction/:id`   | Get single auction item by ID          |
-| POST   | `/auction/:id`   | Place a bid on auction item            |
-
 ---
 
 ## 🔍 Key Features
@@ -156,14 +130,6 @@ npm run dev
 * **Redux Toolkit** used for global auth state
 * Combined with **TanStack Query** for caching API responses
 * Ensures smooth sync between client and backend
-
----
-
-## 🛠️ Upcoming Features
-
-* ✅ Proper error handling & status responses
-* ✅ Prevents spam login attempts or abuse
-
 
 ---
 
