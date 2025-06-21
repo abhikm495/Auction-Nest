@@ -87,13 +87,11 @@ your-domain.com/
 
 ## 📸 Screenshots
 
-### Auction Dashboard
+### Auction Details & History
 ![Auction Dashboard](https://res.cloudinary.com/dzprnwikf/image/upload/v1750533409/Screenshot_2025-06-22_at_12.42.29_AM_wqcyfh.png)
 
 ### Live Bidding Interface
 ![Live Bidding](https://res.cloudinary.com/dzprnwikf/image/upload/v1750533635/Screenshot_2025-06-22_at_12.49.12_AM_r1wcau.png)
-
-### Auction Details & History
 ![Auction Details](https://res.cloudinary.com/dzprnwikf/image/upload/v1750533683/Screenshot_2025-06-22_at_12.49.31_AM_xcvwgy.png)
 
 ---
