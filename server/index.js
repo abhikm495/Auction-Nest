@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from "cookie-parser";
-dotenv.config();
+
 import { connectDB } from './connection.js'
 import auctionRouter from './routes/auction.js';
 import { secureRoute } from './middleware/auth.js';
@@ -13,6 +13,9 @@ import { Server } from 'socket.io';
 import { createServer } from 'http'; 
 import User from './models/user.js';
 import { verifyToken } from './utils/jwt.js';
+
+dotenv.config();
+
 const port = process.env.PORT || 3000;
 
 const app = express();
@@ -83,39 +86,99 @@ io.use(async (socket, next) => {
     }
 });
 
+// Helper function to get room users
+// Simple approach: Track unique users per auction
+const auctionWatchers = new Map(); // auctionId -> Set of userIds
+const socketAuctions = new Map(); 
+const updateAuctionWatchers = (auctionId, userId, action) => {
+  let watchers = auctionWatchers.get(auctionId) || new Set();
+  
+  if (action === 'add') {
+    const wasEmpty = watchers.size === 0;
+    watchers.add(userId);
+    const isNewUser = !wasEmpty || watchers.size > (wasEmpty ? 0 : watchers.size);
+    
+    console.log(`User ${userId} watching auction ${auctionId}. Total watchers: ${watchers.size}`);
+  } else if (action === 'remove') {
+    watchers.delete(userId);
+    console.log(`User ${userId} stopped watching auction ${auctionId}. Total watchers: ${watchers.size}`);
+  }
+  
+  auctionWatchers.set(auctionId, watchers);
+  
+  // Emit updated count to everyone in the auction room
+  io.to(`auction_${auctionId}`).emit('watcherCount', {
+    count: watchers.size,
+    auctionId: auctionId
+  });
+};
+
 io.on('connection', (socket) => {
-    console.log(`User ${socket.userName} connected`);
+  console.log("socket data",socket);
   
-    // Join auction room
-    socket.on('joinAuction', (auctionId) => {
-      socket.join(`auction_${auctionId}`);
-      console.log(`User ${socket.userName} joined auction ${auctionId}`);
-    });
-  
-    // Leave auction room
-    socket.on('leaveAuction', (auctionId) => {
-      socket.leave(`auction_${auctionId}`);
-      console.log(`User ${socket.userName} left auction ${auctionId}`);
-    });
-  
-    // Handle bid placement (this emits to other users in the room)
-    socket.on('placeBid', (bidData) => {
-      // Broadcast to all users in the auction room except the sender
-      socket.to(`auction_${bidData.auctionId}`).emit('newBid', {
-        bidAmount: bidData.bidAmount,
-        bidder: {
-          _id: bidData.bidder._id,
-          name: bidData.bidder.name
-        },
-        bidTime: bidData.bidTime
-      });
-    });
-  
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      console.log(`User ${socket.userName} disconnected`);
+  console.log("Socket connected:", socket.id);
+  const { userName, userId } = socket;
+  console.log(`User ${userName} (${userId}) connected`);
+
+  // Join auction room
+  socket.on('joinAuction', (auctionId) => {
+    socket.join(`auction_${auctionId}`);
+    console.log(`User ${userName} joined auction ${auctionId}`);
+
+    if (!socketAuctions.has(socket.id)) {
+      socketAuctions.set(socket.id, new Set());
+    }
+    socketAuctions.get(socket.id).add(auctionId);
+    
+    updateAuctionWatchers(auctionId, userId, 'add');
+  });
+
+  // Handle check watching request (for initial count)
+  socket.on('checkWatching', (auctionId, callback) => {
+    const watchers = auctionWatchers.get(auctionId) || new Set();
+    if (callback && typeof callback === 'function') {
+      callback({ count: watchers.size });
+    }
+  });
+
+  // Leave auction room
+  socket.on('leaveAuction', (auctionId) => {
+    socket.leave(`auction_${auctionId}`);
+    console.log(`User ${userName} left auction ${auctionId}`);
+    
+
+    if (socketAuctions.has(socket.id)) {
+      socketAuctions.get(socket.id).delete(auctionId);
+    }
+
+    updateAuctionWatchers(auctionId, userId, 'remove');
+  });
+
+  // Handle bid placement
+  socket.on('placeBid', (bidData) => {
+    socket.to(`auction_${bidData.auctionId}`).emit('newBid', {
+      bidAmount: bidData.bidAmount,
+      bidder: {
+        _id: bidData.bidder._id,
+        name: bidData.bidder.name
+      },
+      bidTime: bidData.bidTime
     });
   });
+
+  // Handle disconnection - remove user from ALL auctions they were in
+  socket.on('disconnect', () => {
+    console.log(`User ${userName} disconnected:`, socket.id);
+    // Only remove from auctions this specific socket was in
+    const userAuctions = socketAuctions.get(socket.id) || new Set();
+    userAuctions.forEach(auctionId => {
+      updateAuctionWatchers(auctionId, userId, 'remove');
+    });
+  
+  // Clean up
+  socketAuctions.delete(socket.id);
+  });
+});
 
 app.set('io', io);
 
