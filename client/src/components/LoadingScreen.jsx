@@ -1,57 +1,20 @@
 import React from "react";
-import "../loading.css"
 
 const LoadingScreen = () => {
   return (
-    <div className="flex justify-center items-center min-h-screen">
-      <svg className="pl" width="240" height="240" viewBox="0 0 240 240">
-        <circle
-          className="pl__ring pl__ring--a"
-          cx="120"
-          cy="120"
-          r="105"
-          fill="none"
-          stroke="#000"
-          strokeWidth="20"
-          strokeDasharray="0 660"
-          strokeDashoffset="-330"
-          strokeLinecap="round"
-        />
-        <circle
-          className="pl__ring pl__ring--b"
-          cx="120"
-          cy="120"
-          r="35"
-          fill="none"
-          stroke="#000"
-          strokeWidth="20"
-          strokeDasharray="0 220"
-          strokeDashoffset="-110"
-          strokeLinecap="round"
-        />
-        <circle
-          className="pl__ring pl__ring--c"
-          cx="85"
-          cy="120"
-          r="70"
-          fill="none"
-          stroke="#000"
-          strokeWidth="20"
-          strokeDasharray="0 440"
-          strokeLinecap="round"
-        />
-        <circle
-          className="pl__ring pl__ring--d"
-          cx="155"
-          cy="120"
-          r="70"
-          fill="none"
-          stroke="#000"
-          strokeWidth="20"
-          strokeDasharray="0 440"
-          strokeLinecap="round"
-        />
-      </svg>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex justify-center items-center">
+      <div className="animate-spin" style={{ animationDuration: '4s' }}>
+        {/* Red circular sign */}
+        <div className="w-32 h-32 bg-gradient-to-br from-red-500 to-red-700 rounded-full shadow-lg flex items-center justify-center border-4 border-red-800">
+          <span className="text-white text-3xl font-bold">BID!</span>
+        </div>
+        
+        {/* Wooden stick */}
+        <div className="w-2 h-24 bg-gradient-to-b from-amber-700 to-amber-900 rounded-full mx-auto shadow-md"></div>
+        
+        {/* Hand holding the stick */}
+        
+      </div>
     </div>
   );
 };

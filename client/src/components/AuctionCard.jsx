@@ -116,9 +116,9 @@ export default function AuctionCard({ auction }) {
         </h3>
 
         {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-          {auction.itemDescription}
-        </p>
+        <p className="text-gray-600 text-sm mb-4 leading-relaxed overflow-hidden whitespace-nowrap text-ellipsis">
+  {auction.itemDescription}
+</p>
 
         {/* Price Section */}
         <div className="mb-4">
