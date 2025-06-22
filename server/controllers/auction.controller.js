@@ -158,13 +158,14 @@ export const placeBid = async (req, res) => {
 
 export const dashboardData = async (req, res) => {
     try {
-        const userObjectId = new mongoose.Types.ObjectId(req.user.id);
         const dateNow = new Date();
-        const stats = await Product.aggregate([
+        const isAuthenticated = req.user ? true : false;
+        
+        // Get global stats that everyone can see
+        const globalStats = await Product.aggregate([
             {
                 $facet: {
                     totalAuctions: [{ $count: "count" }],
-                    userAuctionCount: [{ $match: { seller: userObjectId } }, { $count: "count" }],
                     activeAuctions: [
                         { $match: { itemStartDate: { $lte: dateNow }, itemEndDate: { $gte: dateNow } } },
                         { $count: "count" }
@@ -173,11 +174,15 @@ export const dashboardData = async (req, res) => {
             }
         ]);
 
-        const totalAuctions = stats[0].totalAuctions[0]?.count || 0;
-        const userAuctionCount = stats[0].userAuctionCount[0]?.count || 0;
-        const activeAuctions = stats[0].activeAuctions[0]?.count || 0;
-
-        const globalAuction = await Product.find({ itemEndDate: { $gt: dateNow } }).populate("seller", "name").sort({ createdAt: -1 }).limit(3);;
+        const totalAuctions = globalStats[0].totalAuctions[0]?.count || 0;
+        const activeAuctions = globalStats[0].activeAuctions[0]?.count || 0;
+        
+        // Get latest global auctions (visible to everyone)
+        const globalAuction = await Product.find({ itemEndDate: { $gt: dateNow } })
+            .populate("seller", "name")
+            .sort({ createdAt: -1 })
+            .limit(3);
+            
         const latestAuctions = globalAuction.map(auction => ({
             _id: auction._id,
             itemName: auction.itemName,
@@ -190,23 +195,68 @@ export const dashboardData = async (req, res) => {
             itemPhoto: auction.itemPhoto,
         }));
 
-        const userAuction = await Product.find({ seller: userObjectId }).populate("seller", "name").sort({ createdAt: -1 }).limit(3);
-        const latestUserAuctions = userAuction.map(auction => ({
-            _id: auction._id,
-            itemName: auction.itemName,
-            itemDescription: auction.itemDescription,
-            currentPrice: auction.currentPrice,
-            bidsCount: auction.bids.length,
-            timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
-            itemCategory: auction.itemCategory,
-            sellerName: auction.seller.name,
-            itemPhoto: auction.itemPhoto,
-        }));
+        // If user is authenticated, get their personal data
+        let userAuctionCount = 0;
+        let latestUserAuctions = [];
+        
+        if (isAuthenticated) {
+            const userObjectId = new mongoose.Types.ObjectId(req.user.id);
+            
+            // Get user's auction count
+            const userStats = await Product.aggregate([
+                {
+                    $facet: {
+                        userAuctionCount: [
+                            { $match: { seller: userObjectId } }, 
+                            { $count: "count" }
+                        ]
+                    }
+                }
+            ]);
+            
+            userAuctionCount = userStats[0].userAuctionCount[0]?.count || 0;
+            
+            // Get user's latest auctions
+            const userAuction = await Product.find({ seller: userObjectId })
+                .populate("seller", "name")
+                .sort({ createdAt: -1 })
+                .limit(3);
+                
+            latestUserAuctions = userAuction.map(auction => ({
+                _id: auction._id,
+                itemName: auction.itemName,
+                itemDescription: auction.itemDescription,
+                currentPrice: auction.currentPrice,
+                bidsCount: auction.bids.length,
+                timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
+                itemCategory: auction.itemCategory,
+                sellerName: auction.seller.name,
+                itemPhoto: auction.itemPhoto,
+            }));
+        }
 
-        return res.status(200).json({ totalAuctions, userAuctionCount, activeAuctions, latestAuctions, latestUserAuctions })
+        const responseData = {
+            totalAuctions,
+            activeAuctions,
+            latestAuctions,
+            isAuthenticated,
+        };
+
+        // Add user-specific data only if authenticated
+        if (isAuthenticated) {
+            responseData.userAuctionCount = userAuctionCount;
+            responseData.latestUserAuctions = latestUserAuctions;
+        } else {
+            responseData.message = "Login to view your personal auction statistics";
+        }
+
+        return res.status(200).json(responseData);
 
     } catch (error) {
-        res.status(500).json({ message: "Error getting dashboard data", error: error.message })
+        res.status(500).json({ 
+            message: "Error getting dashboard data", 
+            error: error.message 
+        });
     }
 }
 

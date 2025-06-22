@@ -33,12 +33,11 @@ app.get('/', async (req, res) => {
     res.json({ msg: 'Welcome to Online Auction System API' });
 });
 app.use('/auth', userAuthRouter)
-app.use('/user', secureRoute, userRouter)
-app.use('/auction', secureRoute, auctionRouter);
+app.use('/user', secureRoute(true), userRouter)
+app.use('/auction', secureRoute(), auctionRouter);
 app.use('/contact', contactRouter);
 
 const server = createServer(app);
-
 
 const io = new Server(server, {
     cors: {
@@ -60,6 +59,7 @@ const parseCookies = (cookieString) => {
   return cookies;
 };
 
+// Modified socket authentication - allow guests
 io.use(async (socket, next) => {
     try {      
       // Parse cookies and extract auth_token
@@ -67,44 +67,78 @@ io.use(async (socket, next) => {
       const token = cookies.auth_token;
       
       if (!token) {
-        return next(new Error('Authentication token not found'));
+        // Allow guest users
+        socket.isGuest = true;
+        socket.userId = `guest_${socket.id}`;
+        socket.userName = 'Guest User';
+        console.log('Guest user connected:', socket.id);
+        return next();
       }
         
-      const decoded = verifyToken(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
-      
-      if (!user) {
-        return next(new Error('User not found'));
+      try {
+        const decoded = verifyToken(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select('-password');
+        
+        if (!user) {
+          // If token is invalid, treat as guest
+          socket.isGuest = true;
+          socket.userId = `guest_${socket.id}`;
+          socket.userName = 'Guest User';
+          console.log('Invalid token, treating as guest:', socket.id);
+          return next();
+        }
+
+        // Authenticated user
+        socket.isGuest = false;
+        socket.userId = user._id.toString();
+        socket.userName = user.name;
+        console.log('Authenticated user connected:', socket.userName, socket.userId);
+        next();
+      } catch (authError) {
+        // If authentication fails, treat as guest
+        socket.isGuest = true;
+        socket.userId = `guest_${socket.id}`;
+        socket.userName = 'Guest User';
+        console.log('Auth error, treating as guest:', socket.id);
+        next();
       }
-  
-      socket.userId = user._id.toString();
-      socket.userName = user.name;
-      next();
     } catch (error) {
       console.error('Socket auth error:', error);
-      next(new Error('Authentication error'));
+      // Even on error, allow as guest
+      socket.isGuest = true;
+      socket.userId = `guest_${socket.id}`;
+      socket.userName = 'Guest User';
+      next();
     }
 });
 
-// Helper function to get room users
-// Simple approach: Track unique users per auction
-const auctionWatchers = new Map(); // auctionId -> Set of userIds
-const socketAuctions = new Map(); 
-const updateAuctionWatchers = (auctionId, userId, action) => {
+// Updated tracking maps
+const auctionWatchers = new Map(); // auctionId -> Set of socketIds
+const socketAuctions = new Map(); // socketId -> Set of auctionIds
+
+const updateAuctionWatchers = (auctionId, socketId, action) => {
   let watchers = auctionWatchers.get(auctionId) || new Set();
   
   if (action === 'add') {
     const wasEmpty = watchers.size === 0;
-    watchers.add(userId);
-    const isNewUser = !wasEmpty || watchers.size > (wasEmpty ? 0 : watchers.size);
+    watchers.add(socketId);
     
-    console.log(`User ${userId} watching auction ${auctionId}. Total watchers: ${watchers.size}`);
+    console.log(`Socket ${socketId} watching auction ${auctionId}. Total watchers: ${watchers.size}`);
   } else if (action === 'remove') {
-    watchers.delete(userId);
-    console.log(`User ${userId} stopped watching auction ${auctionId}. Total watchers: ${watchers.size}`);
+    watchers.delete(socketId);
+    console.log(`Socket ${socketId} stopped watching auction ${auctionId}. Total watchers: ${watchers.size}`);
+    
+    // Clean up empty sets
+    if (watchers.size === 0) {
+      auctionWatchers.delete(auctionId);
+    } else {
+      auctionWatchers.set(auctionId, watchers);
+    }
   }
   
-  auctionWatchers.set(auctionId, watchers);
+  if (watchers.size > 0) {
+    auctionWatchers.set(auctionId, watchers);
+  }
   
   // Emit updated count to everyone in the auction room
   io.to(`auction_${auctionId}`).emit('watcherCount', {
@@ -114,23 +148,40 @@ const updateAuctionWatchers = (auctionId, userId, action) => {
 };
 
 io.on('connection', (socket) => {
-  console.log("socket data",socket);
-  
   console.log("Socket connected:", socket.id);
-  const { userName, userId } = socket;
-  console.log(`User ${userName} (${userId}) connected`);
+  const { userName, userId, isGuest } = socket;
+  console.log(`User ${userName} (${userId}) connected. Guest: ${isGuest}`);
 
   // Join auction room
   socket.on('joinAuction', (auctionId) => {
     socket.join(`auction_${auctionId}`);
     console.log(`User ${userName} joined auction ${auctionId}`);
 
+    // Track socket auctions
     if (!socketAuctions.has(socket.id)) {
       socketAuctions.set(socket.id, new Set());
     }
     socketAuctions.get(socket.id).add(auctionId);
     
-    updateAuctionWatchers(auctionId, userId, 'add');
+    // Update watchers count using socketId
+    updateAuctionWatchers(auctionId, socket.id, 'add');
+  });
+
+  // Handle leave auction
+  socket.on('leaveAuction', (auctionId) => {
+    socket.leave(`auction_${auctionId}`);
+    console.log(`User ${userName} left auction ${auctionId}`);
+
+    // Remove from tracking
+    const userAuctions = socketAuctions.get(socket.id);
+    if (userAuctions) {
+      userAuctions.delete(auctionId);
+      if (userAuctions.size === 0) {
+        socketAuctions.delete(socket.id);
+      }
+    }
+    
+    updateAuctionWatchers(auctionId, socket.id, 'remove');
   });
 
   // Handle check watching request (for initial count)
@@ -141,21 +192,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Leave auction room
-  socket.on('leaveAuction', (auctionId) => {
-    socket.leave(`auction_${auctionId}`);
-    console.log(`User ${userName} left auction ${auctionId}`);
-    
-
-    if (socketAuctions.has(socket.id)) {
-      socketAuctions.get(socket.id).delete(auctionId);
+  // Handle bid placement - only for authenticated users
+  socket.on('placeBid', (bidData) => {
+    if (isGuest) {
+      socket.emit('bidError', { 
+        message: 'You must be logged in to place bids',
+        requiresAuth: true 
+      });
+      return;
     }
 
-    updateAuctionWatchers(auctionId, userId, 'remove');
-  });
-
-  // Handle bid placement
-  socket.on('placeBid', (bidData) => {
+    // Broadcast to other users in the auction room
     socket.to(`auction_${bidData.auctionId}`).emit('newBid', {
       bidAmount: bidData.bidAmount,
       bidder: {
@@ -166,17 +213,17 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Handle disconnection - remove user from ALL auctions they were in
   socket.on('disconnect', () => {
     console.log(`User ${userName} disconnected:`, socket.id);
-    // Only remove from auctions this specific socket was in
+    
+    // Remove from all auctions this socket was watching
     const userAuctions = socketAuctions.get(socket.id) || new Set();
     userAuctions.forEach(auctionId => {
-      updateAuctionWatchers(auctionId, userId, 'remove');
+      updateAuctionWatchers(auctionId, socket.id, 'remove');
     });
   
-  // Clean up
-  socketAuctions.delete(socket.id);
+    // Clean up
+    socketAuctions.delete(socket.id);
   });
 });
 

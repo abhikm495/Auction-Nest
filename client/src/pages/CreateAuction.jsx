@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState ,React, useEffect} from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAuction } from "../api/auction.js";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 
 export const CreateAuction = () => {
+ 
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -18,6 +20,14 @@ export const CreateAuction = () => {
     itemEndDate: "",
     itemPhoto: "",
   });
+
+  const { user, loading } = useSelector((state) => state.auth);
+  
+     useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [loading, user, navigate]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: createAuction,

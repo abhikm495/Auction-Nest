@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { useSocket } from "./useSocket";
 
 export const useAuctionSocket = (auctionId) => {
-  const { socket, isConnected, connectionError } = useSocket();
+  const { socket, isConnected, connectionError, isGuest } = useSocket();
   const [watchCount, setWatchCount] = useState(0);
+  const [authError, setAuthError] = useState(null);
   const hasJoinedRef = useRef(false);
 
   useEffect(() => {
@@ -28,7 +29,19 @@ export const useAuctionSocket = (auctionId) => {
       }
     };
 
+    // Listen for bid errors (like authentication required)
+    const handleBidError = (error) => {
+      console.error('Bid error received:', error);
+      setAuthError(error);
+      
+      if (error.requiresAuth) {
+        // You can handle this in the component that uses this hook
+        console.log('Authentication required for bidding');
+      }
+    };
+
     socket.on('watcherCount', handleWatcherCount);
+    socket.on('bidError', handleBidError);
 
     // Get initial watch count
     socket.emit('checkWatching', auctionId, (response) => {
@@ -42,6 +55,7 @@ export const useAuctionSocket = (auctionId) => {
     return () => {
       console.log('Leaving auction:', auctionId);
       socket.off('watcherCount', handleWatcherCount);
+      socket.off('bidError', handleBidError);
       
       if (hasJoinedRef.current) {
         socket.emit('leaveAuction', auctionId);
@@ -54,13 +68,25 @@ export const useAuctionSocket = (auctionId) => {
   useEffect(() => {
     hasJoinedRef.current = false;
     setWatchCount(0);
+    setAuthError(null);
   }, [auctionId]);
 
   const placeBid = (bidData) => {
+    if (isGuest) {
+      console.log('Guest user attempting to bid - should redirect to login');
+      setAuthError({
+        message: 'You must be logged in to place bids',
+        requiresAuth: true
+      });
+      return false;
+    }
+
     if (socket && isConnected) {
       socket.emit('placeBid', bidData);
+      return true;
     } else {
       console.error('Socket not connected, cannot place bid');
+      return false;
     }
   };
 
@@ -69,6 +95,9 @@ export const useAuctionSocket = (auctionId) => {
     isConnected,
     connectionError,
     placeBid,
-    watchCount
+    watchCount,
+    isGuest,
+    authError,
+    clearAuthError: () => setAuthError(null)
   };
 };

@@ -33,6 +33,10 @@ export const ViewAuction = () => {
   const { socket, isConnected, watchCount } = useAuctionSocket(id);
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false);
 
+  // Check if user is authenticated
+  const isAuthenticated = user && user.user && user.user._id;
+  const currentUserId = isAuthenticated ? user.user._id : null;
+
   const { data, isLoading } = useQuery({
     queryKey: ["viewAuctions", id],
     queryFn: () => viewAuction(id),
@@ -45,11 +49,8 @@ export const ViewAuction = () => {
 
     socket.emit('joinAuction', id);
 
-    const handleNewBid = (bidData) => {
-      console.log("current user id ", user.user._id);
-      console.log("new bidder id and name, bidAmount", bidData.bidder._id, bidData.bidder.name, bidData.bidAmount);
-      
-      if (bidData.bidder._id === user.user._id) {
+    const handleNewBid = (bidData) => {      
+      if (currentUserId && bidData.bidder._id === currentUserId) {
         toast((t) => (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -111,7 +112,7 @@ export const ViewAuction = () => {
         };
       });
 
-      if (bidData.bidder._id === user.user._id && inputRef.current) {
+      if (currentUserId && bidData.bidder._id === currentUserId && inputRef.current) {
         inputRef.current.value = "";
       }
     };
@@ -172,7 +173,7 @@ export const ViewAuction = () => {
       socket.off('auctionEnded', handleAuctionEnd);
       socket.emit('leaveAuction', id);
     };
-  }, [socket, id, queryClient, user.user._id]);
+  }, [socket, id, queryClient, currentUserId]);
 
   const placeBidMutate = useMutation({
     mutationFn: ({ bidAmount, id }) => placeBid({ bidAmount, id }),
@@ -201,6 +202,24 @@ export const ViewAuction = () => {
 
   const handleBidSubmit = (e) => {
     e.preventDefault();
+    
+    // Check if user is authenticated before allowing bid
+    if (!isAuthenticated) {
+      toast.error('Please log in to place a bid', {
+        duration: 4000,
+        position: 'top-right',
+        style: {
+          background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+          color: 'white',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 10px 25px rgba(220, 38, 38, 0.3)',
+        },
+        icon: <AlertCircle className="w-5 h-5" />,
+      });
+      return;
+    }
+    
     let bidAmount = e.target.bidAmount.value.trim();
     placeBidMutate.mutate({ bidAmount, id });
   };
@@ -249,7 +268,7 @@ export const ViewAuction = () => {
               <h2 className="text-xl font-bold text-white">Bid History</h2>
               {isActive && (
                 <p className="text-xs text-slate-200 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
                   Live updates
                 </p>
               )}
@@ -296,7 +315,7 @@ export const ViewAuction = () => {
                       <div>
                         <p className="font-bold text-slate-900 flex items-center gap-2">
                           {bid.bidder?.name}
-                          {bid.bidder?._id === user.user._id && (
+                          {currentUserId && bid.bidder?._id === currentUserId && (
                             <span className="text-xs text-indigo-600 font-medium bg-indigo-100 px-2 py-1 rounded-full">You</span>
                           )}
                         </p>
@@ -480,8 +499,8 @@ export const ViewAuction = () => {
               </div>
             </div>
 
-            {/* Enhanced Bid Form */}
-            {data.seller._id != user.user._id && isActive && (
+            {/* Enhanced Bid Form - Only show if user is not the seller and auction is active */}
+            {isActive && data.seller._id !== currentUserId && (
               <div className="bg-white/90 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-purple-100/30 pointer-events-none"></div>
                 
@@ -492,6 +511,15 @@ export const ViewAuction = () => {
                     </div>
                     <h3 className="text-2xl font-bold text-slate-900">Place Your Bid</h3>
                   </div>
+                  
+                  {!isAuthenticated && (
+                    <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <AlertCircle className="w-5 h-5" />
+                        <p className="font-medium">Please log in to place a bid</p>
+                      </div>
+                    </div>
+                  )}
                   
                   <form onSubmit={handleBidSubmit} className="space-y-6">
                     <div>
@@ -505,22 +533,22 @@ export const ViewAuction = () => {
                         </span>
                       </label>
                       <div className="relative">
-          <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5 z-10 pointer-events-none" />
-          <input
-          min={data.currentPrice + 1}
-          max={data.currentPrice + 10}
-          id="bidAmount"
-            ref={inputRef}
-            type="number"
-            className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white shadow-sm"
-            placeholder="Enter bid amount"
-          />
-        </div>
+                        <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5 z-10 pointer-events-none" />
+                        <input
+                          min={data.currentPrice + 1}
+                          max={data.currentPrice + 10}
+                          id="bidAmount"
+                          ref={inputRef}
+                          type="number"
+                          disabled={!isAuthenticated}
+                          className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          placeholder="Enter bid amount"
+                        />
+                      </div>
                     </div>
                     <button
-                    
                       type="submit"
-                      disabled={placeBidMutate.isPending}
+                      disabled={placeBidMutate.isPending || !isAuthenticated}
                       className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-200 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
                     >
                       {placeBidMutate.isPending ? (
@@ -531,7 +559,7 @@ export const ViewAuction = () => {
                       ) : (
                         <>
                           <Gavel className="w-5 h-5" />
-                          Place Bid
+                          {isAuthenticated ? 'Place Bid' : 'Login to Bid'}
                         </>
                       )}
                     </button>

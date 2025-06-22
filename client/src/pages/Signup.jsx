@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState,React } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuth, signup } from "../store/auth/authSlice";
 import { Link } from "react-router";
@@ -22,7 +22,7 @@ const Signup = () => {
     e.preventDefault();
     try {
       await dispatch(signup(formData)).unwrap();
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.log("Signup Failed", error);
       setIsError(error || "something went wrong");
@@ -35,7 +35,7 @@ const Signup = () => {
   useEffect(() => {
     dispatch(checkAuth());
     if (user) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [user, navigate, dispatch]);
 

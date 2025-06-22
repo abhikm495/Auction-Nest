@@ -1,3 +1,4 @@
+import React from "react"
 import AuctionCard from "../components/AuctionCard.jsx";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +13,8 @@ const Dashboard = () => {
   });
 
   if (isLoading) return <LoadingScreen />;
+
+  const isAuthenticated = data.isAuthenticated
 
   return (
     <div className="bg-gray-50">
@@ -34,12 +37,12 @@ const Dashboard = () => {
               {data.activeAuctions}
             </p>
           </div>
-          <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-200">
+          {isAuthenticated && <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-200">
             <h3 className="text-sm font-medium text-gray-500">Your Auctions</h3>
             <p className="text-2xl font-bold text-blue-600 mt-1">
               {data.userAuctionCount}
             </p>
-          </div>
+          </div>}
         </div>
 
         {/* All Auctions Section */}
@@ -71,7 +74,7 @@ const Dashboard = () => {
 
         {/* Your Auctions Section */}
         <div>
-          <div className="flex justify-between items-center mb-6">
+          {isAuthenticated && <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Your Auctions</h2>
             <Link
               to="/myauction"
@@ -79,9 +82,9 @@ const Dashboard = () => {
             >
               View More
             </Link>
-          </div>
+          </div>}
 
-          {data.latestUserAuctions.length === 0 ? (
+          {isAuthenticated &&  data.latestUserAuctions.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-sm shadow-sm border border-gray-200">
               <p className="text-gray-500 text-lg">
                 You haven't created any auctions yet.
@@ -94,7 +97,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 place-items-center gap-4">
-              {data.latestUserAuctions.map((auction) => (
+              {isAuthenticated && data.latestUserAuctions.map((auction) => (
                 <AuctionCard key={auction._id} auction={auction} />
               ))}
             </div>

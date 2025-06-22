@@ -1,16 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState, React } from "react";
 import AuctionCard from "../components/AuctionCard";
 import { useQuery } from "@tanstack/react-query";
 import { getMyAuctions } from "../api/auction";
 import LoadingScreen from "../components/LoadingScreen";
+import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 
 export const MyAuction = () => {
   const [filter, setFilter] = useState("all");
+  const navigate =useNavigate()
+  const { user, loading } = useSelector((state) => state.auth);
+  
+     useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [loading, user, navigate]);
   const { data, isLoading } = useQuery({
     queryKey: ["myauctions"],
     queryFn: getMyAuctions,
     staleTime: 30 * 1000,
   });
+
+  
 
   if (isLoading) return <LoadingScreen />;
 
@@ -22,6 +34,8 @@ export const MyAuction = () => {
     filter === "all"
       ? data
       : data?.filter((auction) => auction.itemCategory === filter);
+
+      
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState,React } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { checkAuth, login } from "../store/auth/authSlice";
 import { Link } from "react-router";
@@ -20,7 +20,7 @@ const Login = () => {
     e.preventDefault();
     try {
       await dispatch(login(formData)).unwrap();
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.log("Login Failed", error);
       setIsError(error || "something went wrong");
@@ -33,7 +33,7 @@ const Login = () => {
   useEffect(() => {
     dispatch(checkAuth());
     if (user) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [user, navigate, dispatch]);
 
