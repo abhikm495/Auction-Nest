@@ -87,7 +87,7 @@ export const Navbar = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            {!user ? (
+            
                 <Link 
                     to="/" 
                     className="flex items-center space-x-2 group transition-transform duration-200 hover:scale-105"
@@ -99,18 +99,7 @@ export const Navbar = () => {
                         Auction Nest
                     </span>
                 </Link>
-            ) : (
-                <span 
-                    className="flex items-center space-x-2 cursor-default"
-                >
-                    <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-lg">
-                        <RiAuctionLine className="h-5 w-5 text-white" />
-                    </div>
-                    <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                        Auction Nest
-                    </span>
-                </span>
-            )}
+             
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-1">
