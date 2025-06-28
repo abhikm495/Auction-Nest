@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 const Error = () => {
   return (
     <div className="h-screen w-screen bg-gray-100 flex items-center">

@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState,React } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuth, signup } from "../store/auth/authSlice";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import LoadingScreen from "../components/LoadingScreen";
 
 const Signup = () => {

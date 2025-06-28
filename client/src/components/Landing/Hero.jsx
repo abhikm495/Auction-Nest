@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Gavel, TrendingUp, Users, Shield, Star } from "lucide-react";
+import LSearchBar from "./LSearchBar";
 
 export const Hero = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,7 +58,7 @@ export const Hero = () => {
             </p>
 
             {/* Search bar */}
-            <div className="max-w-2xl mx-auto mb-12">
+            {/* <div className="max-w-2xl mx-auto mb-12">
               <div className="relative group">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-400 transition-colors" />
                 <input
@@ -71,7 +72,8 @@ export const Hero = () => {
                   Search
                 </button>
               </div>
-            </div>
+            </div> */}
+            <LSearchBar/>
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">

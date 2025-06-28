@@ -3,7 +3,7 @@ import AuctionCard from "../components/AuctionCard";
 import { useQuery } from "@tanstack/react-query";
 import { getMyAuctions } from "../api/auction";
 import LoadingScreen from "../components/LoadingScreen";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export const MyAuction = () => {

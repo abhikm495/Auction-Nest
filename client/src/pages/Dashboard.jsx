@@ -1,16 +1,25 @@
 import React from "react"
 import AuctionCard from "../components/AuctionCard.jsx";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardStats } from "../api/auction.js";
 import LoadingScreen from "../components/LoadingScreen.jsx";
+import { getCategories } from "../api/category.js";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  
   const { data, isLoading, error } = useQuery({
     queryKey: ["stats"],
     queryFn: () => dashboardStats(),
     staleTime: 30 * 1000,
   });
+  
+  const { data: categoriesData } = useQuery({
+      queryKey: ["categories"],
+      queryFn: () => getCategories(),
+      staleTime: 5 * 60 * 1000,
+    });
 
   if (isLoading) return <LoadingScreen />;
 
@@ -37,6 +46,11 @@ const Dashboard = () => {
   }
 
   const isAuthenticated = data.isAuthenticated;
+
+  // Filter out "Other" category and categories without images
+  const displayCategories = categoriesData?.filter(category => 
+    category.name !== "Other" && category.image
+  ) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100">
@@ -162,6 +176,68 @@ const Dashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Categories Section */}
+        <div className="mb-12">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Browse Categories</h2>
+              <p className="text-gray-600 text-sm">Explore auctions by category</p>
+            </div>
+            <Link
+              to="/auction"
+              className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm hover:bg-blue-50 rounded-lg transition-all duration-200 flex items-center space-x-1"
+            >
+              <span>View All</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+
+          {displayCategories.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories available</h3>
+              <p className="text-gray-500">Categories are being loaded...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {displayCategories.map((category, index) => (
+                <div
+                  key={category._id}
+                  className="bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer group transform hover:scale-105"
+                  onClick={() => navigate(`/auction?categories=${category._id}`)}
+                  style={{ 
+                    animationDelay: `${index * 50}ms`,
+                    animation: "fadeInUp 0.6s ease-out forwards"
+                  }}
+                >
+                  <div className="aspect-square relative overflow-hidden rounded-t-2xl">
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src = "https://via.placeholder.com/200x200?text=No+Image";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 text-center group-hover:text-blue-600 transition-colors">
+                      {category.name}
+                    </h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* All Auctions Section */}
         <div className="mb-12">

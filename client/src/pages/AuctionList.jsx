@@ -1,66 +1,424 @@
-import { useState, React, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import AuctionCard from "../components/AuctionCard";
 import { useQuery } from "@tanstack/react-query";
 import { getAuctions } from "../api/auction";
 import LoadingScreen from "../components/LoadingScreen";
+import { getCategories } from "../api/category";
+import SearchBar from "../components/SearchBar";
+import { Search, Grid, List, Filter, X, SortAsc, ChevronDown, ChevronUp } from "lucide-react";
+import MobileFilterOverlay from "../components/AuctionList/MobileFilterOverlay";
+import CategoryFilter from "../components/AuctionList/CategoryFilter";
+import SortOptions from "../components/AuctionList/SortOptions";
+import PriceRangeFilter from "../components/AuctionList/PriceRangeFilter";
+
+// Memoized components to prevent unnecessary re-renders
+const MemoizedAuctionCard = React.memo(AuctionCard);
+
+// Pagination Component
+const Pagination = ({ pagination, currentPage, onPageChange }) => {
+  const getPageNumbers = () => {
+    const totalPages = pagination.totalPages || 1;
+    const current = currentPage;
+    const delta = 2;
+    
+    let pages = [];
+    let start = Math.max(1, current - delta);
+    let end = Math.min(totalPages, current + delta);
+    
+    if (end - start < 4) {
+      if (start === 1) {
+        end = Math.min(totalPages, start + 4);
+      } else if (end === totalPages) {
+        start = Math.max(1, end - 4);
+      }
+    }
+    
+    if (start > 1) {
+      pages.push(1);
+      if (start > 2) {
+        pages.push('...');
+      }
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    if (end < totalPages) {
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
+  if (pagination.totalPages <= 1) return null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 mt-6">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">
+          Showing {((currentPage - 1) * pagination.pageSize) + 1} to{' '}
+          {Math.min(currentPage * pagination.pageSize, pagination.totalItems)} of{' '}
+          {pagination.totalItems} results
+        </div>
+        
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={!pagination.hasPrevPage}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              pagination.hasPrevPage
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Previous
+          </button>
+          
+          {getPageNumbers().map((page, index) => (
+            <button
+              key={index}
+              onClick={() => typeof page === 'number' && onPageChange(page)}
+              disabled={page === '...'}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                page === currentPage
+                  ? "bg-blue-600 text-white"
+                  : page === '...'
+                  ? "text-gray-400 cursor-default"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={!pagination.hasNextPage}
+            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              pagination.hasNextPage
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const AuctionList = () => {
-  const [filter, setFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [viewMode, setViewMode] = useState("grid");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize state from URL parameters
+  const [selectedCategories, setSelectedCategories] = useState(() => {
+    const categories = searchParams.get('categories');
+    return categories ? categories.split(',').filter(Boolean) : [];
+  });
+  
+  const [searchTerm, setSearchTerm] = useState(() => {
+    return searchParams.get('search') || '';
+  });
+  
+  const [viewMode, setViewMode] = useState(() => {
+    return searchParams.get('view') || 'grid';
+  });
+  
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = searchParams.get('page');
+    return page ? parseInt(page, 10) : 1;
+  });
+  
+  const [sortOptions, setSortOptions] = useState(() => {
+    const sort = {};
+    if (searchParams.get('sort_date')) sort.sort_date = searchParams.get('sort_date');
+    if (searchParams.get('sort_price')) sort.sort_price = searchParams.get('sort_price');
+    if (searchParams.get('sort_bids')) sort.sort_bids = searchParams.get('sort_bids');
+    return sort;
+  });
+  
+  const [priceRange, setPriceRange] = useState(() => {
+    return {
+      min: searchParams.get('min_price') || '',
+      max: searchParams.get('max_price') || ''
+    };
+  });
+  
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  
+  const pageSize = 100;
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["allAuction"],
-    queryFn: getAuctions,
+  // Function to update URL parameters
+  const updateURLParams = useCallback((updates) => {
+    setSearchParams(prevParams => {
+      const newParams = new URLSearchParams(prevParams);
+      
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '' || 
+            (Array.isArray(value) && value.length === 0) ||
+            (typeof value === 'object' && Object.keys(value).length === 0)) {
+          newParams.delete(key);
+        } else if (Array.isArray(value)) {
+          newParams.set(key, value.join(','));
+        } else {
+          newParams.set(key, value.toString());
+        }
+      });
+      
+      return newParams;
+    });
+  }, [setSearchParams]);
+
+  // Enhanced category toggle with URL sync
+  const handleCategoryToggle = useCallback((categoryId) => {
+    setSelectedCategories(prev => {
+      const newCategories = prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId];
+      
+      // Update URL
+      updateURLParams({ 
+        categories: newCategories.length > 0 ? newCategories : null,
+        page: null // Reset page when filters change
+      });
+      
+      return newCategories;
+    });
+  }, [updateURLParams]);
+
+  // Enhanced search handler with URL sync
+  const handleSearchChange = useCallback((searchText) => {
+    setSearchTerm(searchText);
+    updateURLParams({ 
+      search: searchText || null,
+      page: null // Reset page when search changes
+    });
+  }, [updateURLParams]);
+
+  // Enhanced view mode change with URL sync
+  const handleViewModeChange = useCallback((mode) => {
+    setViewMode(mode);
+    updateURLParams({ view: mode });
+  }, [updateURLParams]);
+
+  // Enhanced page change with URL sync
+  const handlePageChange = useCallback((newPage) => {
+    if (newPage >= 1) {
+      setCurrentPage(newPage);
+      updateURLParams({ page: newPage });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [updateURLParams]);
+
+  // Enhanced sort change with URL sync
+  const handleSortChange = useCallback((newSortOptions) => {
+    setSortOptions(newSortOptions);
+    const sortUpdates = {
+      sort_date: newSortOptions.sort_date || null,
+      sort_price: newSortOptions.sort_price || null,
+      sort_bids: newSortOptions.sort_bids || null,
+      page: null // Reset page when sort changes
+    };
+    updateURLParams(sortUpdates);
+  }, [updateURLParams]);
+
+  // Enhanced price range change with URL sync
+  const handlePriceRangeChange = useCallback((newPriceRange) => {
+    setPriceRange(newPriceRange);
+    updateURLParams({
+      min_price: newPriceRange.min || null,
+      max_price: newPriceRange.max || null,
+      page: null // Reset page when price range changes
+    });
+  }, [updateURLParams]);
+
+  // Enhanced clear filters with URL sync
+  const handleClearFilters = useCallback(() => {
+    setSelectedCategories([]);
+    setSearchTerm("");
+    setSortOptions({});
+    setPriceRange({ min: "", max: "" });
+    setCurrentPage(1);
+    
+    // Clear all filter-related URL parameters
+    updateURLParams({
+      categories: null,
+      search: null,
+      sort_date: null,
+      sort_price: null,
+      sort_bids: null,
+      min_price: null,
+      max_price: null,
+      page: null
+    });
+  }, [updateURLParams]);
+
+  // Sync state with URL changes (for browser back/forward)
+  useEffect(() => {
+    const categories = searchParams.get('categories');
+    const search = searchParams.get('search');
+    const view = searchParams.get('view');
+    const page = searchParams.get('page');
+    const minPrice = searchParams.get('min_price');
+    const maxPrice = searchParams.get('max_price');
+    
+    if (categories !== null) {
+      const categoryArray = categories ? categories.split(',').filter(Boolean) : [];
+      setSelectedCategories(categoryArray);
+    }
+    
+    if (search !== null) {
+      setSearchTerm(search || '');
+    }
+    
+    if (view !== null) {
+      setViewMode(view || 'grid');
+    }
+    
+    if (page !== null) {
+      const pageNum = page ? parseInt(page, 10) : 1;
+      setCurrentPage(pageNum);
+    }
+    
+    if (minPrice !== null || maxPrice !== null) {
+      setPriceRange({
+        min: minPrice || '',
+        max: maxPrice || ''
+      });
+    }
+    
+    // Handle sort options
+    const sort = {};
+    if (searchParams.get('sort_date')) sort.sort_date = searchParams.get('sort_date');
+    if (searchParams.get('sort_price')) sort.sort_price = searchParams.get('sort_price');
+    if (searchParams.get('sort_bids')) sort.sort_bids = searchParams.get('sort_bids');
+    setSortOptions(sort);
+  }, [searchParams]);
+
+  // Build query parameters for API
+  const queryParams = useMemo(() => {
+    const params = {
+      page_no: currentPage,
+      page_size: pageSize,
+    };
+
+    // Add search term
+    if (searchTerm.trim()) {
+      params.search_text = searchTerm.trim();
+    }
+
+    // Add multiple categories
+    if (selectedCategories.length > 0) {
+      params.categories = selectedCategories.join(',');
+    }
+
+    // Add price range
+    if (priceRange.min) {
+      params.min_price = parseFloat(priceRange.min);
+    }
+    if (priceRange.max) {
+      params.max_price = parseFloat(priceRange.max);
+    }
+
+    // Add sort options
+    if (sortOptions.sort_date) {
+      params.sort_date = sortOptions.sort_date;
+    }
+    if (sortOptions.sort_price) {
+      params.sort_price = sortOptions.sort_price;
+    }
+    if (sortOptions.sort_bids) {
+      params.sort_bids = sortOptions.sort_bids;
+    }
+
+    return params;
+  }, [currentPage, pageSize, searchTerm, selectedCategories, priceRange, sortOptions]);
+
+  // Fetch auctions with API integration
+  const { data: auctionResponse, isLoading: auctionDataLoading, error, isRefetching } = useQuery({
+    queryKey: ["allAuction", queryParams],
+    queryFn: () => getAuctions(queryParams),
     staleTime: 30 * 1000,
+    keepPreviousData: true,
   });
 
-  const categories = useMemo(() => {
-    if (!data) return ["all"];
-    return [
-      "all",
-      ...new Set(data.map((auction) => auction.itemCategory)),
-    ];
-  }, [data]);
+  // Fetch categories for filter options
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => getCategories(),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const filteredAndSortedAuctions = useMemo(() => {
-    if (!data) return [];
-    
-    let filtered = data;
-    
-    // Filter by category
-    if (filter !== "all") {
-      filtered = filtered.filter((auction) => auction.itemCategory === filter);
+  // Extract auction data from API response
+  const auctionData = useMemo(() => {
+    if (auctionResponse?.data && Array.isArray(auctionResponse.data)) {
+      return auctionResponse.data;
     }
-    
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter((auction) => 
-        auction.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        auction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        auction.itemCategory?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    // Sort auctions
-    switch (sortBy) {
-      case "newest":
-        return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      case "oldest":
-        return filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-      case "priceHigh":
-        return filtered.sort((a, b) => (b.currentBid || b.startingBid) - (a.currentBid || a.startingBid));
-      case "priceLow":
-        return filtered.sort((a, b) => (a.currentBid || a.startingBid) - (b.currentBid || b.startingBid));
-      case "endingSoon":
-        return filtered.sort((a, b) => new Date(a.endTime) - new Date(b.endTime));
-      default:
-        return filtered;
-    }
-  }, [data, filter, searchTerm, sortBy]);
+    return [];
+  }, [auctionResponse]);
 
-  if (isLoading) return <LoadingScreen />;
+  // Extract pagination data from API response
+  const pagination = useMemo(() => {
+    if (auctionResponse?.pagination) {
+      return auctionResponse.pagination;
+    }
+    return { 
+      totalPages: 1, 
+      currentPage: 1, 
+      totalItems: auctionData.length,
+      pageSize: pageSize,
+      hasNextPage: false,
+      hasPrevPage: false
+    };
+  }, [auctionResponse, auctionData.length, pageSize]);
+
+  // Calculate active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedCategories.length > 0) count++;
+    if (searchTerm.trim()) count++;
+    if (priceRange.min || priceRange.max) count++;
+    if (Object.keys(sortOptions).length > 0) count++;
+    return count;
+  }, [selectedCategories, searchTerm, priceRange, sortOptions]);
+
+  const sidebarContent = (
+    <div className="space-y-6">
+      {/* Clear Filters Button */}
+      <button
+        onClick={handleClearFilters}
+        className="cursor-pointer w-full px-4 py-2 text-sm text-red-600 hover:text-red-800 border border-red-200 hover:border-red-300 rounded-lg transition-colors"
+        disabled={!activeFiltersCount}
+      >
+        Clear All Filters ({activeFiltersCount})
+      </button>
+
+      {/* Category Filter */}
+      <CategoryFilter
+        categories={categoriesData}
+        selectedCategories={selectedCategories}
+        onCategoryToggle={handleCategoryToggle}
+      />
+
+      {/* Sort Options */}
+      <SortOptions
+        sortOptions={sortOptions}
+        onSortChange={handleSortChange}
+      />
+
+      {/* Price Range Filter */}
+      <PriceRangeFilter
+        priceRange={priceRange}
+        onPriceRangeChange={handlePriceRangeChange}
+      />
+    </div>
+  );
 
   if (error) {
     return (
@@ -86,7 +444,7 @@ export const AuctionList = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -94,189 +452,162 @@ export const AuctionList = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Live Auctions</h1>
               <p className="text-gray-600">Discover unique items and place your bids</p>
             </div>
-            <div className="mt-4 sm:mt-0 flex items-center space-x-2">
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center space-x-2 mt-4 sm:mt-0">
               <button
-                onClick={() => setViewMode("grid")}
+                onClick={() => handleViewModeChange("grid")}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === "grid" 
                     ? "bg-blue-600 text-white" 
                     : "bg-white text-gray-400 hover:text-gray-600"
                 }`}
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
+                <Grid className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setViewMode("list")}
+                onClick={() => handleViewModeChange("list")}
                 className={`p-2 rounded-lg transition-colors ${
                   viewMode === "list" 
                     ? "bg-blue-600 text-white" 
                     : "bg-white text-gray-400 hover:text-gray-600"
                 }`}
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
+                <List className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="relative mb-6">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+          <SearchBar 
+            initialValue={searchTerm}
+            onSearch={handleSearchChange}
+            queryParams={queryParams}
+          />
+
+          {/* Mobile Filter Toggle */}
+          <div className="lg:hidden mb-6">
+            <button
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filters & Sort</span>
+              {activeFiltersCount > 0 && (
+                <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex gap-8">
+          {/* Desktop Sidebar - Made scrollable */}
+          <div className="hidden lg:block w-64 flex-shrink-0">
+            <div className="bg-white rounded-xl shadow-sm sticky top-8" style={{ height: 'calc(100vh - 6rem)' }}>
+              {/* Sidebar Header */}
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Filters & Sort</h3>
+              </div>
+              
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto p-6" style={{ height: 'calc(100% - 80px)' }}>
+                {sidebarContent}
+              </div>
             </div>
-            <input
-              type="text"
-              placeholder="Search auctions by name, description, or category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm transition-all duration-200 placeholder-gray-500"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
           </div>
 
-          {/* Filters and Sort Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-            {/* Category Filters */}
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Categories</h3>
-              <div className="flex flex-wrap gap-2">
-                {categories.map((category) => (
+          {/* Results Section */}
+          <div className="flex-1">
+            {/* Results Header */}
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {pagination.totalItems} Auctions Found
+                  </h2>
+                  {searchTerm && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Results for "{searchTerm}"
+                    </p>
+                  )}
+                  {isRefetching && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      Updating results...
+                    </p>
+                  )}
+                </div>
+
+                {activeFiltersCount > 0 && (
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    {activeFiltersCount} filter{activeFiltersCount > 1 ? 's' : ''} active
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Auction Grid/List */}
+            {auctionDataLoading || isRefetching ? <LoadingScreen/> : auctionData.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No auctions found
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  Try adjusting your search or filters
+                </p>
+                {activeFiltersCount > 0 && (
                   <button
-                    key={category}
-                    onClick={() => setFilter(category)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                      filter === category
-                        ? "bg-blue-600 text-white shadow-lg transform scale-105"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:border-blue-300 hover:shadow-md"
-                    }`}
+                    onClick={handleClearFilters}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                    Clear All Filters
                   </button>
+                )}
+              </div>
+            ) : (
+              <div className={`
+                ${viewMode === "grid" 
+                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
+                  : "space-y-4"
+                }
+              `}>
+                {auctionData.map((auction, index) => (
+                  <div
+                    key={auction._id}
+                    className="transform transition-all duration-300 hover:scale-105"
+                    style={{ 
+                      animationDelay: `${index * 50}ms`,
+                      animation: "fadeInUp 0.6s ease-out forwards"
+                    }}
+                  >
+                    <MemoizedAuctionCard auction={auction} viewMode={viewMode} />
+                  </div>
                 ))}
               </div>
-            </div>
-
-            {/* Sort Controls */}
-            <div className="lg:ml-6">
-              <label className="text-sm font-medium text-gray-700 block mb-2">Sort by</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="priceHigh">Highest Price</option>
-                <option value="priceLow">Lowest Price</option>
-                <option value="endingSoon">Ending Soon</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Header */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-xl shadow-sm">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {filter === "all" ? "All Auctions" : `${filter.charAt(0).toUpperCase() + filter.slice(1)} Auctions`}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {filteredAndSortedAuctions.length} {filteredAndSortedAuctions.length === 1 ? 'auction' : 'auctions'} found
-              {searchTerm && ` for "${searchTerm}"`}
-            </p>
-          </div>
-          
-          {/* Clear Filters Button */}
-          {(filter !== "all" || searchTerm) && (
-            <button
-              onClick={() => {
-                setFilter("all");
-                setSearchTerm("");
-              }}
-              className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-
-        {/* Results */}
-        {filteredAndSortedAuctions.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No auctions found
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {searchTerm 
-                ? `No auctions match your search "${searchTerm}"`
-                : `No auctions found in the ${filter} category`
-              }
-            </p>
-            {(filter !== "all" || searchTerm) && (
-              <button
-                onClick={() => {
-                  setFilter("all");
-                  setSearchTerm("");
-                }}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Show All Auctions
-              </button>
             )}
-          </div>
-        ) : (
-          <div className={`
-            ${viewMode === "grid" 
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
-              : "space-y-4"
-            }
-          `}>
-            {filteredAndSortedAuctions.map((auction, index) => (
-              <div
-                key={auction._id}
-                className="transform transition-all duration-300 hover:scale-105"
-                style={{ 
-                  animationDelay: `${index * 50}ms`,
-                  animation: "fadeInUp 0.6s ease-out forwards"
-                }}
-              >
-                <AuctionCard 
-                  auction={auction} 
-                  viewMode={viewMode}
-                />
-              </div>
-            ))}
-          </div>
-        )}
 
-        {/* Load More Button (if pagination is needed) */}
-        {filteredAndSortedAuctions.length > 0 && (
-          <div className="text-center mt-12">
-            <p className="text-gray-500 text-sm">
-              Showing all {filteredAndSortedAuctions.length} auctions
-            </p>
+            {/* Pagination */}
+            <Pagination
+              pagination={pagination}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+            />
           </div>
-        )}
-      </main>
+        </div>
+
+        {/* Mobile Filter Overlay */}
+        <MobileFilterOverlay
+          isOpen={isMobileFilterOpen}
+          onClose={() => setIsMobileFilterOpen(false)}
+        >
+          {sidebarContent}
+        </MobileFilterOverlay>
+      </div>
 
       <style jsx>{`
         @keyframes fadeInUp {
@@ -288,6 +619,16 @@ export const AuctionList = () => {
             opacity: 1;
             transform: translateY(0);
           }
+        }
+        
+        /* Hide scrollbar while keeping scroll functionality */
+        .overflow-y-auto {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar {
+          display: none; /* WebKit */
         }
       `}</style>
     </div>
