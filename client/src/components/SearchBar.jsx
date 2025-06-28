@@ -218,7 +218,7 @@ const SearchBar = ({
 
       {/* Dropdown */}
       {isDropdownOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
+        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
           {isSearchLoading ? (
             <div className="p-4 text-center text-gray-500">
               <div className="flex items-center justify-center space-x-2">

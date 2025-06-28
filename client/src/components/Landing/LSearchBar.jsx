@@ -41,7 +41,6 @@ const LSearchBar = ({
   const { data: searchResponse, isLoading: isSearchLoading } = useQuery({
     queryKey: ["searchSuggestions", debouncedSearchTerm],
     queryFn: () => getAuctions({
-      ...queryParams,
       search_text: debouncedSearchTerm.trim(),
       page_size: 20,
       page_no: 1,
@@ -197,7 +196,7 @@ const LSearchBar = ({
 
         {/* Dropdown */}
         {isDropdownOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-96 overflow-y-auto" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
             <style jsx>{`
               div::-webkit-scrollbar {
                 display: none;
