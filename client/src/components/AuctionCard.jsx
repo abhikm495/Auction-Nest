@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Eye, Clock, Users, TrendingUp, Star, Heart, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Eye, Clock, Users, TrendingUp, Star, Heart, ArrowRight, Award } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function AuctionCard({ auction }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -47,6 +47,11 @@ export default function AuctionCard({ auction }) {
     navigate(`/auction/${id}`)
   }
 
+  const handleCategoryClick = (e) => {
+    e.stopPropagation(); // Prevent card click event
+    navigate(`/auction?categories=${auction.itemCategory._id}`);
+  };
+
   return (
     <div 
       className="group relative bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2"
@@ -65,14 +70,18 @@ export default function AuctionCard({ auction }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         
         {/* Category badge */}
-        <div className="absolute top-3 left-3">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm text-gray-700">
-            {auction.itemCategory}
+        <button 
+          onClick={handleCategoryClick}
+          className="absolute top-4 left-4 group/category cursor-pointer transform transition-all duration-300 hover:scale-105"
+        >
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white/95 backdrop-blur-md text-gray-800 border border-white/20 shadow-lg hover:bg-white hover:shadow-xl transition-all duration-300">
+            <Award className="w-4 h-4 text-blue-600" />
+            {auction.itemCategory.name}
           </span>
-        </div>
+        </button>
 
         {/* Like button */}
-        <button
+        {/* <button
           onClick={() => setIsLiked(!isLiked)}
           className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center transition-all duration-200 hover:bg-white hover:scale-110"
         >
@@ -81,7 +90,7 @@ export default function AuctionCard({ auction }) {
               isLiked ? 'text-red-500 fill-current' : 'text-gray-600'
             }`} 
           />
-        </button>
+        </button> */}
 
         {/* Status badge */}
         <div className="absolute bottom-3 left-3">
@@ -98,14 +107,14 @@ export default function AuctionCard({ auction }) {
         </div>
 
         {/* Quick view overlay */}
-        <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-all duration-300 ${
+        {/* <div className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-all duration-300 ${
           isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}>
           <button className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-transform duration-200 hover:scale-105">
             <Eye className="w-4 h-4" />
             Quick View
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Content Section */}
@@ -169,7 +178,7 @@ export default function AuctionCard({ auction }) {
         <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
             <span className="text-white text-xs font-bold">
-              {(auction?.sellerName || auction?.seller?.name || 'U')[0].toUpperCase()}
+              {(auction?.seller.name || auction?.seller?.name || 'U')[0].toUpperCase()}
             </span>
           </div>
           <div>
@@ -184,7 +193,7 @@ export default function AuctionCard({ auction }) {
         </div>
 
         {/* Action Button */}
-        <button onClick={()=>handleButtonClick(auction._id)} className="group/btn w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button onClick={()=>handleButtonClick(auction._id)} className="cursor-pointer group/btn w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-xl font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
           <span className="flex items-center justify-center gap-2">
             {isEnded ? (
               <>

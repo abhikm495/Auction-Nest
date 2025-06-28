@@ -12,7 +12,9 @@ import contactRouter from "./routes/contact.js";
 import { Server } from 'socket.io';
 import { createServer } from 'http'; 
 import User from './models/user.js';
+
 import { verifyToken } from './utils/jwt.js';
+import categoryRouter from './routes/category.js';
 
 dotenv.config();
 
@@ -36,6 +38,7 @@ app.use('/auth', userAuthRouter)
 app.use('/user', secureRoute(true), userRouter)
 app.use('/auction', secureRoute(), auctionRouter);
 app.use('/contact', contactRouter);
+app.use('/categories',categoryRouter)
 
 const server = createServer(app);
 

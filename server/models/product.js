@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-
 const bidSchema = new mongoose.Schema({
     bidder: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
     bidAmount: { type: Number, required: true },
@@ -17,7 +16,8 @@ const productSchema = new mongoose.Schema({
         required: true,
     },
     itemCategory: {
-        type: String,
+        type: mongoose.Schema.ObjectId,
+        ref: 'categories',
         required: true,
     },
     itemPhoto: {
@@ -55,6 +55,9 @@ const productSchema = new mongoose.Schema({
         default: false,
     }
 }, { timestamps: true });
+
+
+
 
 const Product = mongoose.model('Product', productSchema);
 export default Product;

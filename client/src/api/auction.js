@@ -3,16 +3,36 @@ const VITE_AUCTION_API = import.meta.env.VITE_AUCTION_API;
 
 
 // getting list of all auction
-export const getAuctions = async () => {
+export const getAuctions = async (params = {}) => {
     try {
-        const res = await axios.get(`${VITE_AUCTION_API}`,
-            { withCredentials: true }
-        );
+        // Build query string from params
+        const queryParams = new URLSearchParams();
+        
+        // Add all parameters to query string
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                queryParams.append(key, value);
+            }
+        });
+        
+        const url = queryParams.toString() 
+            ? `${VITE_AUCTION_API}?${queryParams.toString()}`
+            : `${VITE_AUCTION_API}`;
+            
+        const res = await axios.get(url, {
+            withCredentials: true
+        });
+
+
+        console.log("res",res);
+        
+        
         return res.data;
     } catch (error) {
         console.log("Error on getting auction data", error.message);
+        throw error; // Re-throw to let React Query handle the error
     }
-}
+};
 
 // getting list of all auction
 export const getMyAuctions = async () => {

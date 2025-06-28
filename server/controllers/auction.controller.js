@@ -1,5 +1,7 @@
 import uploadImage from '../services/cloudinaryService.js';
 import Product from '../models/product.js';
+
+
 import mongoose from "mongoose"
 
 
@@ -43,34 +45,331 @@ export const createAuction = async (req, res) => {
 
 export const showAuction = async (req, res) => {
     try {
-        const auction = await Product.find({ itemEndDate: { $gt: new Date() } })
-            .populate("seller", "name")
-            .select("itemName itemDescription currentPrice bids itemEndDate itemCategory itemPhoto seller")
-            .sort({ createdAt: -1 });
-        const formatted = auction.map(auction => ({
+        const { 
+            search_text, 
+            page_no = 1, 
+            page_size = 100, 
+            category_id, 
+            min_price, 
+            max_price,
+            sort_by = 'newest', // Keep for backward compatibility
+            sort_date,
+            sort_price,
+            sort_bids,
+            categories
+        } = req.query;
+
+        // Convert to numbers and validate
+        const pageNo = Math.max(1, parseInt(page_no) || 1);
+        const pageSize = Math.min(1000, Math.max(1, parseInt(page_size) || 100));
+        const skip = (pageNo - 1) * pageSize;
+
+        // Build query object
+        const query = {
+            itemEndDate: { $gt: new Date() }
+        };
+
+        // Add search functionality for item name
+        if (search_text && search_text.trim()) {
+            query.itemName = { 
+                $regex: search_text.trim(), 
+                $options: 'i'
+            };
+        }
+
+        // Handle multiple categories filtering (categories are always IDs)
+        if (categories && categories.trim()) {
+            let categoryArray;
+            if (typeof categories === 'string') {
+                categoryArray = categories.split(',').map(cat => cat.trim()).filter(cat => cat);
+            } else if (Array.isArray(categories)) {
+                categoryArray = categories.filter(cat => cat && cat.trim());
+            }
+            
+            if (categoryArray && categoryArray.length > 0) {
+                // Filter valid ObjectIds and convert to ObjectId instances
+                const validCategoryIds = categoryArray
+                    .filter(id => mongoose.Types.ObjectId.isValid(id))
+                    .map(id => new mongoose.Types.ObjectId(id));
+                
+                if (validCategoryIds.length > 0) {
+                    query.itemCategory = { $in: validCategoryIds };
+                }
+            }
+        }
+        
+        // Handle single category_id parameter
+        if (category_id && mongoose.Types.ObjectId.isValid(category_id)) {
+            if (query.itemCategory && query.itemCategory.$in) {
+                query.itemCategory.$in.push(new mongoose.Types.ObjectId(category_id));
+            } else {
+                query.itemCategory = new mongoose.Types.ObjectId(category_id);
+            }
+        }
+
+        // Add price range filter
+        if (min_price || max_price) {
+            query.currentPrice = {};
+            if (min_price && !isNaN(parseFloat(min_price))) {
+                query.currentPrice.$gte = parseFloat(min_price);
+            }
+            if (max_price && !isNaN(parseFloat(max_price))) {
+                query.currentPrice.$lte = parseFloat(max_price);
+            }
+        }
+
+        // Build sort options from separate parameters
+        const buildSortOptionsFromParams = (sortDate, sortPrice, sortBids, fallbackSortBy) => {
+            const sortOptions = {};
+            
+            // Handle date sorting
+            if (sortDate) {
+                switch (sortDate) {
+                    case 'newest':
+                        sortOptions.createdAt = -1;
+                        break;
+                    case 'oldest':
+                        sortOptions.createdAt = 1;
+                        break;
+                }
+            }
+            
+            // Handle price sorting
+            if (sortPrice) {
+                switch (sortPrice) {
+                    case 'priceHigh':
+                        sortOptions.currentPrice = -1;
+                        break;
+                    case 'priceLow':
+                        sortOptions.currentPrice = 1;
+                        break;
+                }
+            }
+            
+            // Handle bids sorting
+            if (sortBids) {
+                switch (sortBids) {
+                    case 'bidCountHigh':
+                        sortOptions.bidsCount = -1;
+                        break;
+                    case 'bidCountLow':
+                        sortOptions.bidsCount = 1;
+                        break;
+                }
+            }
+            
+            // If no separate sort parameters are provided, fall back to the old sort_by parameter
+            if (Object.keys(sortOptions).length === 0 && fallbackSortBy) {
+                const parseSortBy = (sortByParam) => {
+                    if (!sortByParam) return ['newest'];
+                    
+                    if (typeof sortByParam === 'string') {
+                        return sortByParam.split(',').map(s => s.trim()).filter(s => s);
+                    }
+                    return Array.isArray(sortByParam) ? sortByParam : ['newest'];
+                };
+
+                const sortArray = parseSortBy(fallbackSortBy);
+                
+                sortArray.forEach(sort => {
+                    switch (sort) {
+                        case 'newest':
+                            sortOptions.createdAt = -1;
+                            break;
+                        case 'oldest':
+                            sortOptions.createdAt = 1;
+                            break;
+                        case 'priceHigh':
+                            sortOptions.currentPrice = -1;
+                            break;
+                        case 'priceLow':
+                            sortOptions.currentPrice = 1;
+                            break;
+                        case 'bidCountHigh':
+                            sortOptions.bidsCount = -1;
+                            break;
+                        case 'bidCountLow':
+                            sortOptions.bidsCount = 1;
+                            break;
+                    }
+                });
+            }
+            
+            // Default to newest if no sorting is specified
+            if (Object.keys(sortOptions).length === 0) {
+                sortOptions.createdAt = -1;
+            }
+            
+            return sortOptions;
+        };
+
+        const sortOptions = buildSortOptionsFromParams(sort_date, sort_price, sort_bids, sort_by);
+        
+        // Check if we need aggregation (for bid count sorting)
+        const needsAggregation = sort_bids && (sort_bids === 'bidCountHigh' || sort_bids === 'bidCountLow');
+
+        let auctions;
+        let totalCount;
+
+        if (needsAggregation) {
+            // Get total count using aggregation
+            const countPipeline = [
+                { $match: query },
+                { $count: "total" }
+            ];
+            const countResult = await Product.aggregate(countPipeline);
+            totalCount = countResult.length > 0 ? countResult[0].total : 0;
+
+            // Aggregation pipeline with proper population
+            const pipeline = [
+                { $match: query },
+                {
+                    $addFields: {
+                        bidsCount: { $size: "$bids" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "users", // Make sure this matches your User collection name
+                        localField: "seller",
+                        foreignField: "_id",
+                        as: "sellerInfo"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "categories", // Make sure this matches your Category collection name
+                        localField: "itemCategory",
+                        foreignField: "_id",
+                        as: "categoryInfo"
+                    }
+                },
+                {
+                    $addFields: {
+                        seller: {
+                            $cond: {
+                                if: { $gt: [{ $size: "$sellerInfo" }, 0] },
+                                then: { 
+                                    _id: { $arrayElemAt: ["$sellerInfo._id", 0] },
+                                    name: { $arrayElemAt: ["$sellerInfo.name", 0] }
+                                },
+                                else: { _id: null, name: null }
+                            }
+                        },
+                        itemCategory: {
+                            $cond: {
+                                if: { $gt: [{ $size: "$categoryInfo" }, 0] },
+                                then: {
+                                    _id: { $arrayElemAt: ["$categoryInfo._id", 0] },
+                                    name: { $arrayElemAt: ["$categoryInfo.name", 0] }
+                                },
+                                else: { _id: null, name: null }
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        sellerInfo: 0,
+                        categoryInfo: 0
+                    }
+                },
+                { $sort: sortOptions },
+                { $skip: skip },
+                { $limit: pageSize },
+                {
+                    $project: {
+                        itemName: 1,
+                        itemDescription: 1,
+                        currentPrice: 1,
+                        bids: 1,
+                        itemEndDate: 1,
+                        itemCategory: 1,
+                        itemPhoto: 1,
+                        seller: 1,
+                        bidsCount: 1,
+                        createdAt: 1
+                    }
+                }
+            ];
+
+            auctions = await Product.aggregate(pipeline);
+        } else {
+            // Use regular query with populate
+            totalCount = await Product.countDocuments(query);
+            
+            auctions = await Product.find(query)
+                .populate("seller", "name _id")
+                .populate("itemCategory", "name _id")
+                .select("itemName itemDescription currentPrice bids itemEndDate itemCategory itemPhoto seller createdAt")
+                .sort(sortOptions)
+                .skip(skip)
+                .limit(pageSize)
+                .lean(); // Add lean() for better performance
+        }
+
+        const totalPages = Math.ceil(totalCount / pageSize);
+
+        // Format the response
+        const formatted = auctions.map(auction => ({
             _id: auction._id,
             itemName: auction.itemName,
             itemDescription: auction.itemDescription,
             currentPrice: auction.currentPrice,
-            bidsCount: auction.bids.length,
+            bidsCount: auction.bidsCount || auction.bids?.length || 0,
             timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
-            itemCategory: auction.itemCategory,
-            sellerName: auction.seller.name,
-            itemPhoto: auction.itemPhoto,
+            itemCategory: {
+                _id: auction.itemCategory?._id || null,
+                name: auction.itemCategory?.name || null
+            },
+            seller: {
+                _id: auction.seller?._id || null,
+                name: auction.seller?.name || null
+            },
+            itemPhoto: auction.itemPhoto || "",
         }));
 
-        res.status(200).json(formatted);
-    } catch (error) {
-        return res.status(500).json({ message: 'Error fetching auctions', error: error.message });
-    }
-}
+        // Response with pagination info
+        res.status(200).json({
+            data: formatted,
+            pagination: {
+                currentPage: pageNo,
+                pageSize: pageSize,
+                totalItems: totalCount,
+                totalPages: totalPages,
+                hasNextPage: pageNo < totalPages,
+                hasPrevPage: pageNo > 1,
+                nextPage: pageNo < totalPages ? pageNo + 1 : null,
+                prevPage: pageNo > 1 ? pageNo - 1 : null
+            },
+            filters: {
+                search_text: search_text || null,
+                category_id: category_id || null,
+                categories: categories || null,
+                min_price: min_price || null,
+                max_price: max_price || null,
+                sort_by: sort_by || 'newest', // Keep for backward compatibility
+                sort_date: sort_date || null,
+                sort_price: sort_price || null,
+                sort_bids: sort_bids || null
+            }
+        });
 
+    } catch (error) {
+        console.error('Error fetching auctions:', error);
+        return res.status(500).json({ 
+            message: 'Error fetching auctions', 
+            error: error.message 
+        });
+    }
+};
 export const auctionById = async (req, res) => {
     try {
         const { id } = req.params;
         const auction = await Product.findById(id)
             .populate("seller", "name")
-            .populate("bids.bidder", "name");
+            .populate("bids.bidder", "name")
+            .populate("itemCategory","_id name")
         auction.bids.sort((a, b) => new Date(b.bidTime) - new Date(a.bidTime));
         res.status(200).json(auction);
     } catch (error) {
@@ -179,9 +478,10 @@ export const dashboardData = async (req, res) => {
         
         // Get latest global auctions (visible to everyone)
         const globalAuction = await Product.find({ itemEndDate: { $gt: dateNow } })
-            .populate("seller", "name")
+            .populate("seller", "_id name")
+            .populate("itemCategory","_id name")
             .sort({ createdAt: -1 })
-            .limit(3);
+            .limit(8);
             
         const latestAuctions = globalAuction.map(auction => ({
             _id: auction._id,
@@ -191,7 +491,7 @@ export const dashboardData = async (req, res) => {
             bidsCount: auction.bids.length,
             timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
             itemCategory: auction.itemCategory,
-            sellerName: auction.seller.name,
+            seller: auction.seller,
             itemPhoto: auction.itemPhoto,
         }));
 
@@ -218,7 +518,8 @@ export const dashboardData = async (req, res) => {
             
             // Get user's latest auctions
             const userAuction = await Product.find({ seller: userObjectId })
-                .populate("seller", "name")
+                .populate("seller", "_id name")
+                .populate("itemCategory","_id name")
                 .sort({ createdAt: -1 })
                 .limit(3);
                 
@@ -230,7 +531,7 @@ export const dashboardData = async (req, res) => {
                 bidsCount: auction.bids.length,
                 timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
                 itemCategory: auction.itemCategory,
-                sellerName: auction.seller.name,
+                seller: auction.seller,
                 itemPhoto: auction.itemPhoto,
             }));
         }

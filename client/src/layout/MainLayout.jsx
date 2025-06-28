@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Outlet } from "react-router";
+import { Outlet } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuth } from "../store/auth/authSlice";

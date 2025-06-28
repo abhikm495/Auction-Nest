@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ArrowRight, Users, TrendingUp, Star, Sparkles, Zap } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 
 export const CTA = () => {
   const [isVisible, setIsVisible] = useState(false);

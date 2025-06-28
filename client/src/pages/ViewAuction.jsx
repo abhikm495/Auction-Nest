@@ -1,5 +1,5 @@
 import { useRef, useEffect, React, useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { placeBid, viewAuction } from "../api/auction.js";
 import { useSelector } from "react-redux";
@@ -36,7 +36,7 @@ export const ViewAuction = () => {
   // Check if user is authenticated
   const isAuthenticated = user && user.user && user.user._id;
   const currentUserId = isAuthenticated ? user.user._id : null;
-
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ["viewAuctions", id],
     queryFn: () => viewAuction(id),
@@ -250,6 +250,13 @@ export const ViewAuction = () => {
     </div>
   );
 
+  
+
+  const handleCategoryClick = (e) => {
+    e.stopPropagation(); // Prevent card click event
+    navigate(`/auction?categories=${data.itemCategory._id}`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
       <Toaster />
@@ -416,10 +423,12 @@ export const ViewAuction = () => {
             {/* Header with badges and status */}
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-3 mb-4">
+                <button className="cursor-pointer" onClick={handleCategoryClick}>
                 <span className="bg-gradient-to-r from-slate-100 to-slate-200 text-slate-800 px-4 py-2 rounded-full text-sm font-semibold border border-slate-300 flex items-center gap-2">
                   <Tag className="w-4 h-4" />
-                  {data.itemCategory}
+                  {data.itemCategory.name}
                 </span>
+                </button>
                 <span
                   className={`px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 ${
                     isActive

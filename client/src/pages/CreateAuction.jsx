@@ -2,7 +2,7 @@ import { useState ,React, useEffect} from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAuction } from "../api/auction.js";
 import { useRef } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export const CreateAuction = () => {
