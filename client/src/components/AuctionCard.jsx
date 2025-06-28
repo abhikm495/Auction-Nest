@@ -2,11 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Eye, Clock, Users, TrendingUp, Star, Heart, ArrowRight, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function AuctionCard({ auction }) {
+export default function AuctionCard({ auction ,myAuction = false}) {
   const [timeLeft, setTimeLeft] = useState("");
-  const [isLiked, setIsLiked] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-
   // Calculate time left with more precision
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -48,15 +45,17 @@ export default function AuctionCard({ auction }) {
   }
 
   const handleCategoryClick = (e) => {
-    e.stopPropagation(); // Prevent card click event
-    navigate(`/auction?categories=${auction.itemCategory._id}`);
+    e.stopPropagation();    
+    if(myAuction)navigate(`/myauction?categories=${auction.itemCategory._id}`);
+
+    else navigate(`/auction?categories=${auction.itemCategory._id}`);
+    
   };
 
   return (
     <div 
       className="group relative bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+
     >
       {/* Image Section */}
       <div className="relative h-56 overflow-hidden bg-gray-50">
@@ -64,6 +63,9 @@ export default function AuctionCard({ auction }) {
           src={auction.itemPhoto || "https://picsum.photos/400/300"}
           alt={auction.itemName}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          onError={(e) => {
+            e.target.src = "https://picsum.photos/601";
+          }}
         />
         
         {/* Overlay gradient */}
@@ -120,7 +122,7 @@ export default function AuctionCard({ auction }) {
       {/* Content Section */}
       <div className="p-6">
         {/* Title */}
-        <h3 className="font-bold text-xl mb-2 text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors duration-200">
+        <h3 onClick={()=>handleButtonClick(auction._id)} className="cursor-pointer font-bold text-xl mb-2 text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors duration-200">
           {auction.itemName}
         </h3>
 

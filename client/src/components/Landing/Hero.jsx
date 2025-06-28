@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Search, Gavel, TrendingUp, Users, Shield, Star } from "lucide-react";
 import LSearchBar from "./LSearchBar";
+import { useNavigate } from "react-router-dom";
 
 export const Hero = () => {
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeFeature, setActiveFeature] = useState(0);
-  
+  const navigate = useNavigate()
   const features = [
     { icon: Gavel, text: "Live Auctions", color: "text-blue-500" },
     { icon: Shield, text: "Secure Bidding", color: "text-green-500" },
@@ -77,13 +77,13 @@ export const Hero = () => {
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-              <button className="group bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
+              <button onClick={()=>navigate('auction')} className="cursor-pointer group bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
                 <span className="flex items-center justify-center gap-2">
                   <Gavel className="w-5 h-5 group-hover:animate-bounce" />
                   Start Bidding
                 </span>
               </button>
-              <button className="group bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105">
+              <button onClick={()=>navigate('create')} className="cursor-pointer group bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105">
                 <span className="flex items-center justify-center gap-2">
                   <TrendingUp className="w-5 h-5 group-hover:animate-pulse" />
                   Sell Your Items

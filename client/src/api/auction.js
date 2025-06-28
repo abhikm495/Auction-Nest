@@ -21,11 +21,7 @@ export const getAuctions = async (params = {}) => {
             
         const res = await axios.get(url, {
             withCredentials: true
-        });
-
-
-        console.log("res",res);
-        
+        });        
         
         return res.data;
     } catch (error) {

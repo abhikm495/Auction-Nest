@@ -56,7 +56,8 @@ export const showAuction = async (req, res) => {
             sort_date,
             sort_price,
             sort_bids,
-            categories
+            categories,
+            my_auction
         } = req.query;
 
         // Convert to numbers and validate
@@ -68,6 +69,16 @@ export const showAuction = async (req, res) => {
         const query = {
             itemEndDate: { $gt: new Date() }
         };
+
+        // Add my_auction filter - only show auctions where seller is the current user
+        if (my_auction === 'true' || my_auction === true) {
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ 
+                    message: 'Authentication required to view your auctions' 
+                });
+            }
+            query.seller = new mongoose.Types.ObjectId(req.user.id);
+        }
 
         // Add search functionality for item name
         if (search_text && search_text.trim()) {
@@ -351,7 +362,8 @@ export const showAuction = async (req, res) => {
                 sort_by: sort_by || 'newest', // Keep for backward compatibility
                 sort_date: sort_date || null,
                 sort_price: sort_price || null,
-                sort_bids: sort_bids || null
+                sort_bids: sort_bids || null,
+                my_auction: my_auction || null
             }
         });
 
@@ -521,7 +533,7 @@ export const dashboardData = async (req, res) => {
                 .populate("seller", "_id name")
                 .populate("itemCategory","_id name")
                 .sort({ createdAt: -1 })
-                .limit(3);
+                .limit(8);
                 
             latestUserAuctions = userAuction.map(auction => ({
                 _id: auction._id,
@@ -558,29 +570,5 @@ export const dashboardData = async (req, res) => {
             message: "Error getting dashboard data", 
             error: error.message 
         });
-    }
-}
-
-export const myAuction = async (req, res) => {
-    try {
-        const auction = await Product.find({ seller: req.user.id })
-            .populate("seller", "name")
-            .select("itemName itemDescription currentPrice bids itemEndDate itemCategory itemPhoto seller")
-            .sort({ createdAt: -1 });
-        const formatted = auction.map(auction => ({
-            _id: auction._id,
-            itemName: auction.itemName,
-            itemDescription: auction.itemDescription,
-            currentPrice: auction.currentPrice,
-            bidsCount: auction.bids.length,
-            timeLeft: Math.max(0, new Date(auction.itemEndDate) - new Date()),
-            itemCategory: auction.itemCategory,
-            sellerName: auction.seller.name,
-            itemPhoto: auction.itemPhoto,
-        }));
-
-        res.status(200).json(formatted);
-    } catch (error) {
-        return res.status(500).json({ message: 'Error fetching auctions', error: error.message });
     }
 }

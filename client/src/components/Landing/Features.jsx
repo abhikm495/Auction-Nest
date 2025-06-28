@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Gavel, Shield, Clock, ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const Features = () => {
   const [hoveredFeature, setHoveredFeature] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
+  const navigate = useNavigate()
 
   const features = [
     {
@@ -159,7 +161,7 @@ export const Features = () => {
               <p className="text-gray-900 font-semibold">Join 100,000+ satisfied users</p>
               <p className="text-gray-600 text-sm">Start your auction journey today</p>
             </div>
-            <button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105">
+            <button onClick={()=>navigate('dashboard')} className="cursor-pointer bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 hover:scale-105">
               Get Started
             </button>
           </div>

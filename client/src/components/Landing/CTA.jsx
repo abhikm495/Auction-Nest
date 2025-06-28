@@ -77,7 +77,7 @@ export const CTA = () => {
             {/* Primary Button */}
             <button
               onClick={()=>navigate('auction')}
-              className="group relative bg-white text-blue-600 px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-200 hover:shadow-2xl hover:shadow-white/25 hover:-translate-y-1 overflow-hidden"
+              className="cursor-pointer group relative bg-white text-blue-600 px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-200 hover:shadow-2xl hover:shadow-white/25 hover:-translate-y-1 overflow-hidden"
               onMouseEnter={() => setHoveredButton('primary')}
               onMouseLeave={() => setHoveredButton(null)}
             >
@@ -94,7 +94,7 @@ export const CTA = () => {
             {/* Secondary Button */}
             <button
               onClick={()=>navigate('create')}
-              className="group relative bg-transparent border-2 border-white/30 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-200 hover:bg-white/10 hover:border-white/50 hover:shadow-xl hover:-translate-y-1 backdrop-blur-sm"
+              className="cursor-pointer group relative bg-transparent border-2 border-white/30 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-200 hover:bg-white/10 hover:border-white/50 hover:shadow-xl hover:-translate-y-1 backdrop-blur-sm"
               onMouseEnter={() => setHoveredButton('secondary')}
               onMouseLeave={() => setHoveredButton(null)}
             >

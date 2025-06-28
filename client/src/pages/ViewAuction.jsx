@@ -408,11 +408,14 @@ export const ViewAuction = () => {
           <div className="space-y-6">
             <div className="relative group">
               <div className="aspect-square bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden transition-all duration-300 group-hover:shadow-3xl">
-                <img
-                  src={data.itemPhoto || "https://picsum.photos/601"}
-                  alt={data.itemName}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+              <img
+  src={data.itemPhoto || "https://picsum.photos/601"}
+  alt={data.itemName}
+  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+  onError={(e) => {
+    e.target.src = "https://picsum.photos/601";
+  }}
+/>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
             </div>

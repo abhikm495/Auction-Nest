@@ -457,7 +457,7 @@ export const AuctionList = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleViewModeChange("grid")}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`cursor-pointer p-2 rounded-lg transition-colors ${
                   viewMode === "grid" 
                     ? "bg-blue-600 text-white" 
                     : "bg-white text-gray-400 hover:text-gray-600"
@@ -467,7 +467,7 @@ export const AuctionList = () => {
               </button>
               <button
                 onClick={() => handleViewModeChange("list")}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`cursor-pointer p-2 rounded-lg transition-colors ${
                   viewMode === "list" 
                     ? "bg-blue-600 text-white" 
                     : "bg-white text-gray-400 hover:text-gray-600"
@@ -491,7 +491,7 @@ export const AuctionList = () => {
           <div className="lg:hidden mb-6">
             <button
               onClick={() => setIsMobileFilterOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="cursor-pointer flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center space-x-2">
                 <Filter className="w-4 h-4" />

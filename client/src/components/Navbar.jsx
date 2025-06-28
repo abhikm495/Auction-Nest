@@ -126,16 +126,16 @@ export const Navbar = () => {
               {user ? (
                 <>
                   {/* Notifications */}
-                  <button className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 relative">
+                  {/* <button className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 relative">
                     <MdNotifications className="h-5 w-5" />
                     <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-                  </button>
+                  </button> */}
 
                   {/* Profile Dropdown */}
                   <div className="relative profile-dropdown">
                     <button
                       onClick={toggleProfileDropdown}
-                      className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                      className="cursor-pointer flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200"
                     >
                       <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-md">
                         {user.user.avatar ? (
@@ -174,7 +174,7 @@ export const Navbar = () => {
                         <hr className="my-2" />
                         <button
                           onClick={handleLogout}
-                          className="flex items-center w-full px-4 py-2 text-red-700 hover:bg-red-50 transition-colors duration-200"
+                          className="cursor-pointer flex items-center w-full px-4 py-2 text-red-700 hover:bg-red-50 transition-colors duration-200"
                         >
                           <IoLogOutOutline className="mr-3 h-5 w-5" />
                           Sign out

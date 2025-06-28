@@ -7,7 +7,6 @@ export const getCategories = async (formData) => {
             formData,
             { withCredentials: true }
         );
-        console.log("get categories response",res);
         
         return res.data.data;
     } catch (error) {

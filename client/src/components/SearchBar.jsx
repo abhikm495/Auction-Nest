@@ -203,7 +203,7 @@ const SearchBar = ({
           {/* Search Button */}
           <button
             onClick={handleSearchClick}
-            className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded"
+            className="cursor-pointer p-1 text-gray-400 hover:text-blue-600 transition-colors rounded"
             aria-label="Search"
           >
             <Search className="h-4 w-4" />
@@ -244,7 +244,7 @@ const SearchBar = ({
                         alt={item.itemName}
                         className="w-12 h-12 rounded-lg object-cover bg-gray-100"
                         onError={(e) => {
-                          e.target.src = '/placeholder-image.jpg';
+                          e.target.src = "https://picsum.photos/601";
                         }}
                       />
                     </div>

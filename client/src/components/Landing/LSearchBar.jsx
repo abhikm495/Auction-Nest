@@ -189,7 +189,7 @@ const LSearchBar = ({
         {/* Right Side Buttons */}
         <button 
           onClick={handleSearchClick}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105"
+          className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105"
         >
           Search
         </button>
@@ -227,7 +227,7 @@ const LSearchBar = ({
                           alt={item.itemName}
                           className="w-12 h-12 rounded-lg object-cover bg-gray-100"
                           onError={(e) => {
-                            e.target.src = '/placeholder-image.jpg';
+                            e.target.src = "https://picsum.photos/601";
                           }}
                         />
                       </div>
