@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Product from "./models/product.js"
+import Product from "../models/product.js"
 
 // Sample data arrays
 const productNames = {
