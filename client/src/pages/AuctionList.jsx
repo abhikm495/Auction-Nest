@@ -6,7 +6,7 @@ import { getAuctions } from "../api/auction";
 import LoadingScreen from "../components/LoadingScreen";
 import { getCategories } from "../api/category";
 import SearchBar from "../components/SearchBar";
-import { Search, Grid, List, Filter, X, SortAsc, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Grid, List, Filter} from "lucide-react";
 import MobileFilterOverlay from "../components/AuctionList/MobileFilterOverlay";
 import CategoryFilter from "../components/AuctionList/CategoryFilter";
 import SortOptions from "../components/AuctionList/SortOptions";
@@ -59,18 +59,18 @@ const Pagination = ({ pagination, currentPage, onPageChange }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 mt-6">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
           Showing {((currentPage - 1) * pagination.pageSize) + 1} to{' '}
           {Math.min(currentPage * pagination.pageSize, pagination.totalItems)} of{' '}
           {pagination.totalItems} results
         </div>
         
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 flex-wrap justify-center">
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={!pagination.hasPrevPage}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               pagination.hasPrevPage
                 ? "text-gray-700 hover:bg-gray-100"
                 : "text-gray-400 cursor-not-allowed"
@@ -84,7 +84,7 @@ const Pagination = ({ pagination, currentPage, onPageChange }) => {
               key={index}
               onClick={() => typeof page === 'number' && onPageChange(page)}
               disabled={page === '...'}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 page === currentPage
                   ? "bg-blue-600 text-white"
                   : page === '...'
@@ -99,7 +99,7 @@ const Pagination = ({ pagination, currentPage, onPageChange }) => {
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={!pagination.hasNextPage}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               pagination.hasNextPage
                 ? "text-gray-700 hover:bg-gray-100"
                 : "text-gray-400 cursor-not-allowed"
@@ -422,8 +422,8 @@ export const AuctionList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md w-full">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -444,17 +444,17 @@ export const AuctionList = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Live Auctions</h1>
-              <p className="text-gray-600">Discover unique items and place your bids</p>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Live Auctions</h1>
+              <p className="text-sm sm:text-base text-gray-600">Discover unique items and place your bids</p>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+            <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleViewModeChange("grid")}
                 className={`p-2 rounded-lg transition-colors ${
@@ -463,7 +463,7 @@ export const AuctionList = () => {
                     : "bg-white text-gray-400 hover:text-gray-600"
                 }`}
               >
-                <Grid className="w-5 h-5" />
+                <Grid className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 onClick={() => handleViewModeChange("list")}
@@ -473,17 +473,19 @@ export const AuctionList = () => {
                     : "bg-white text-gray-400 hover:text-gray-600"
                 }`}
               >
-                <List className="w-5 h-5" />
+                <List className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
 
           {/* Search Bar */}
-          <SearchBar 
-            initialValue={searchTerm}
-            onSearch={handleSearchChange}
-            queryParams={queryParams}
-          />
+          <div className="mb-4 sm:mb-6">
+            <SearchBar 
+              initialValue={searchTerm}
+              onSearch={handleSearchChange}
+              queryParams={queryParams}
+            />
+          </div>
 
           {/* Mobile Filter Toggle */}
           <div className="lg:hidden mb-6">
@@ -491,10 +493,12 @@ export const AuctionList = () => {
               onClick={() => setIsMobileFilterOpen(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <Filter className="w-4 h-4" />
-              <span>Filters & Sort</span>
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4" />
+                <span className="text-sm font-medium">Filters & Sort</span>
+              </div>
               {activeFiltersCount > 0 && (
-                <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                   {activeFiltersCount}
                 </span>
               )}
@@ -504,7 +508,7 @@ export const AuctionList = () => {
 
         {/* Main Content */}
         <div className="flex gap-8">
-          {/* Desktop Sidebar - Made scrollable */}
+          {/* Desktop Sidebar */}
           <div className="hidden lg:block w-64 flex-shrink-0">
             <div className="bg-white rounded-xl shadow-sm sticky top-8" style={{ height: 'calc(100vh - 6rem)' }}>
               {/* Sidebar Header */}
@@ -520,28 +524,28 @@ export const AuctionList = () => {
           </div>
 
           {/* Results Section */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Results Header */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-              <div className="flex items-center justify-between">
+            <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                     {pagination.totalItems} Auctions Found
                   </h2>
                   {searchTerm && (
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Results for "{searchTerm}"
                     </p>
                   )}
                   {isRefetching && (
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="text-xs sm:text-sm text-blue-600 mt-1">
                       Updating results...
                     </p>
                   )}
                 </div>
 
                 {activeFiltersCount > 0 && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                  <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium self-start sm:self-center">
                     {activeFiltersCount} filter{activeFiltersCount > 1 ? 's' : ''} active
                   </span>
                 )}
@@ -550,20 +554,20 @@ export const AuctionList = () => {
 
             {/* Auction Grid/List */}
             {auctionDataLoading || isRefetching ? <LoadingScreen/> : auctionData.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-gray-400" />
+              <div className="text-center py-12 sm:py-16 bg-white rounded-xl shadow-sm">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                   No auctions found
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-sm sm:text-base text-gray-500 mb-4">
                   Try adjusting your search or filters
                 </p>
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={handleClearFilters}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                   >
                     Clear All Filters
                   </button>
@@ -572,20 +576,22 @@ export const AuctionList = () => {
             ) : (
               <div className={`
                 ${viewMode === "grid" 
-                  ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
-                  : "space-y-4"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6" 
+                  : "space-y-3 sm:space-y-4"
                 }
               `}>
                 {auctionData.map((auction, index) => (
                   <div
                     key={auction._id}
-                    className="transform transition-all duration-300 hover:scale-105"
+                    className="w-full min-w-0 transform transition-all duration-300 hover:scale-105"
                     style={{ 
                       animationDelay: `${index * 50}ms`,
                       animation: "fadeInUp 0.6s ease-out forwards"
                     }}
                   >
-                    <MemoizedAuctionCard auction={auction} viewMode={viewMode} />
+                    <div className="w-full h-full">
+                      <MemoizedAuctionCard auction={auction} viewMode={viewMode} />
+                    </div>
                   </div>
                 ))}
               </div>
