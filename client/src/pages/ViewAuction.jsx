@@ -32,6 +32,7 @@ export const ViewAuction = () => {
   const inputRef = useRef();
   const { socket, isConnected, watchCount } = useAuctionSocket(id);
   const [isBidHistoryOpen, setIsBidHistoryOpen] = useState(false);
+  const [bidValidationError, setBidValidationError] = useState('');
 
   // Check if user is authenticated
   const isAuthenticated = user && user.user && user.user._id;
@@ -203,6 +204,9 @@ export const ViewAuction = () => {
   const handleBidSubmit = (e) => {
     e.preventDefault();
     
+    // Clear previous validation error
+    setBidValidationError('');
+    
     // Check if user is authenticated before allowing bid
     if (!isAuthenticated) {
       toast.error('Please log in to place a bid', {
@@ -221,6 +225,39 @@ export const ViewAuction = () => {
     }
     
     let bidAmount = e.target.bidAmount.value.trim();
+    
+    // Check if bid amount is empty
+    if (!bidAmount) {
+      setBidValidationError('Please enter a bid amount');
+      return;
+    }
+    
+    // Check if current user is already the highest bidder
+    if (data.bids.length > 0 && data.bids[0].bidder._id === currentUserId) {
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <Crown className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-lg">Already the Highest Bidder!</p>
+            <p className="text-sm text-yellow-100">You cannot place consecutive bids</p>
+          </div>
+        </div>
+      ), {
+        duration: 5000,
+        position: 'top-center',
+        style: {
+          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          color: 'white',
+          boxShadow: '0 25px 50px rgba(245, 158, 11, 0.3)',
+          borderRadius: '16px',
+          padding: '24px',
+        },
+      });
+      return;
+    }
+    
     placeBidMutate.mutate({ bidAmount, id });
   };
 
@@ -534,34 +571,43 @@ export const ViewAuction = () => {
                   )}
                   
                   <form onSubmit={handleBidSubmit} className="space-y-6">
-                    <div>
-                      <label htmlFor="bidAmount" className="block text-sm font-semibold text-slate-700 mb-3">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4" />
-                          Bid Amount
-                        </div>
-                        <span className="text-xs text-slate-500 font-normal">
-                          Range: ${data.currentPrice + 1} - ${data.currentPrice + 10}
-                        </span>
-                      </label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5 z-10 pointer-events-none" />
-                        <input
-                          min={data.currentPrice + 1}
-                          max={data.currentPrice + 10}
-                          id="bidAmount"
-                          ref={inputRef}
-                          type="number"
-                          disabled={!isAuthenticated}
-                          className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          placeholder="Enter bid amount"
-                        />
-                      </div>
-                    </div>
+                  <div>
+  <label htmlFor="bidAmount" className="block text-sm font-semibold text-slate-700 mb-3">
+    <div className="flex items-center gap-2">
+      <DollarSign className="w-4 h-4" />
+      Bid Amount
+    </div>
+    <span className="text-xs text-slate-500 font-normal">
+      Range: ${data.currentPrice + 1} - ${data.currentPrice + 10}
+    </span>
+  </label>
+  <div className="relative">
+    <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 w-5 h-5 z-10 pointer-events-none" />
+    <input
+      min={data.currentPrice + 1}
+      max={data.currentPrice + 10}
+      id="bidAmount"
+      ref={inputRef}
+      type="number"
+      disabled={!isAuthenticated}
+      className={`w-full pl-12 pr-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-lg font-semibold bg-white shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed ${
+        bidValidationError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+      }`}
+      placeholder="Enter bid amount"
+      onChange={() => setBidValidationError('')} // Clear error on input change
+    />
+  </div>
+  {bidValidationError && (
+    <div className="mt-2 flex items-center gap-2 text-red-600">
+      <AlertCircle className="w-4 h-4" />
+      <p className="text-sm font-medium">{bidValidationError}</p>
+    </div>
+  )}
+</div>
                     <button
                       type="submit"
                       disabled={placeBidMutate.isPending || !isAuthenticated}
-                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-200 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
+                      className="cursor-pointer w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-4 px-6 rounded-xl transition-all duration-200 font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
                     >
                       {placeBidMutate.isPending ? (
                         <>

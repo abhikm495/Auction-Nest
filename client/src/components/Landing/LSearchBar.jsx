@@ -182,17 +182,18 @@ const LSearchBar = ({
             // Always open dropdown on focus (even if empty)
             setIsDropdownOpen(true);
           }}
-          className="w-full pl-12 pr-6 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-lg"
+          className="w-full pl-12 pr-20 sm:pr-24 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 text-lg"
           autoComplete="off"
         />
 
         {/* Right Side Buttons */}
         <button 
-          onClick={handleSearchClick}
-          className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105"
-        >
-          Search
-        </button>
+  onClick={handleSearchClick}
+  className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-3 sm:px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 text-sm sm:text-base"
+>
+  <span className="hidden sm:inline">Search</span>
+  <Search className="h-4 w-4 sm:hidden" />
+</button>
 
         {/* Dropdown */}
         {isDropdownOpen && (
