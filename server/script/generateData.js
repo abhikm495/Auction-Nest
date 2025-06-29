@@ -111,7 +111,7 @@ const getRandomFutureDate = (daysFromNow = 30) => {
 async function generateDummyProducts() {
   try {
     // Connect to MongoDB
-    await mongoose.connect('mongodb+srv://abhikm911:admin@cluster0.l4dludr.mongodb.net/auction-nest', {
+    await mongoose.connect(process.env.MONGO_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

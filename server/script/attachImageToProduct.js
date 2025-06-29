@@ -141,7 +141,7 @@ async function updateProductImages() {
 // Additional function to update only products without images
 async function updateProductsWithoutImages() {
   try {
-    await mongoose.connect('mongodb+srv://abhikm911:admin@cluster0.l4dludr.mongodb.net/auction-nest', {
+    await mongoose.connect(process.env.MONGO_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
