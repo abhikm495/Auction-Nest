@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet,useNavigate } from "react-router-dom";
 import { Navbar } from "../components/Navbar";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuth } from "../store/auth/authSlice";
@@ -10,18 +10,17 @@ import ScrollToTop from "../utils/ScrollToTop";
 export const MainLayout = () => {
   const { user, loading } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-
+  const navigate = useNavigate();
+  
   useEffect(() => {
-    if (!user) {
-      dispatch(checkAuth());
-    }
+    if (!user) dispatch(checkAuth());
   }, [dispatch, user]);
-
-  // useEffect(() => {
-  //   if (!loading && !user) {
-  //     navigate("/login");
-  //   }
-  // }, [loading, user, navigate]);
+  
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [loading, user, navigate]);
 
   if (loading) return <LoadingScreen />;
 
